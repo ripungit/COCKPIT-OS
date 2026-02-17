@@ -47,6 +47,7 @@ import {
     Plus
 } from "lucide-react";
 import { WINDOW_CONSTANTS } from "../window-constants";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface SettingsProps {
     isOpen: boolean;
@@ -107,15 +108,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
     const [theme, setTheme] = useState("Dark");
 
     // --- Agent Integration ---
-    const getBaseUrl = () => {
-        if (typeof window !== 'undefined') {
-            const host = window.location.hostname;
-            if (host === 'localhost' || host === '127.0.0.1') {
-                return 'http://139.59.114.151:9100';
-            }
-        }
-        return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://139.59.114.151:9100';
-    };
+
 
     const [device, setDevice] = useState<any>(null);
     const [metrics, setMetrics] = useState<any>(null);
@@ -146,7 +139,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         const fetchInitialData = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices`, {
+                const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices`, {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
                 });
@@ -159,7 +152,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
 
                     const fetchMetrics = async () => {
                         try {
-                            const metricsRes = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${firstDevice.device.id}/metrics/latest`, {
+                            const metricsRes = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${firstDevice.device.id}/metrics/latest`, {
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'include',
                                 cache: 'no-store'
@@ -203,7 +196,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
     useEffect(() => {
         if (!device?.device?.id || !isOpen) return;
 
-        const baseUrl = getBaseUrl().replace('http', 'ws').replace(':3000', ':9100');
+        const baseUrl = BASE_URL.replace(/^http/, 'ws');
         const ws = new WebSocket(`${baseUrl}/cockpit/cocktail/ws/ui`);
 
         ws.onopen = () => {
@@ -241,7 +234,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingDocker) return;
         setIsFetchingDocker(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -259,7 +252,8 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                     return;
                 }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
+                attempts++;
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
                     credentials: 'include'
                 });
                 const tasks = await r.json();
@@ -296,7 +290,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingSsh) return;
         setIsFetchingSsh(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -315,7 +309,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                     return;
                 }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=1`, {
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=1`, {
                     credentials: 'include'
                 });
                 const tasks = await r.json();
@@ -358,7 +352,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         try {
             // Setup and Append the keys in one go
             const keysToAppend = newSshKey.trim();
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -380,7 +374,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                     return;
                 }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
                     credentials: 'include'
                 });
                 const tasks = await r.json();
@@ -408,7 +402,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             // Using || true because grep returns 1 if no lines are matched (i.e. deleting the last key)
             const command = `grep -v -F "${fullKey.trim()}" ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.tmp || true; mv ~/.ssh/authorized_keys.tmp ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`;
 
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -427,7 +421,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                     return;
                 }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, {
                     credentials: 'include'
                 });
                 const tasks = await r.json();
@@ -450,7 +444,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingNetwork) return;
         setIsFetchingNetwork(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -465,7 +459,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingNetwork(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -498,7 +492,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingFirewall) return;
         setIsFetchingFirewall(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -513,7 +507,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingFirewall(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -553,7 +547,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                 echo "Java:$(java -version 2>&1 | head -n 1 | awk -F'\"' '{print $2}' || echo 'Not Installed')"
                 echo "Bun:$(bun -v 2>/dev/null || echo 'Not Installed')"
             `;
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -568,7 +562,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingRuntimes(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -608,7 +602,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
                 echo "Redis:$(redis-cli --version 2>/dev/null || echo 'Not Running')"
                 echo "MongoDB:$(mongosh --version 2>/dev/null || mongod --version 2>/dev/null || echo 'Not Running')"
             `;
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -619,7 +613,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingDatabases(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -648,7 +642,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingUsers) return;
         setIsFetchingUsers(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -662,7 +656,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingUsers(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -683,7 +677,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id || isFetchingLogs) return;
         setIsFetchingLogs(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -697,7 +691,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async () => {
                 if (attempts > 10) { setIsFetchingLogs(false); return; }
                 attempts++;
-                const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                 const tasks = await r.json();
                 const latest = tasks.find((t: any) => t.id === task.id);
                 if (latest?.status === 'succeeded') {
@@ -714,7 +708,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (!device?.device?.id) return;
         try {
             // UFW Status
-            const ufwRes = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const ufwRes = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -726,7 +720,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const ufwTask = await ufwRes.json();
 
             // Open Ports
-            const portsRes = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
+            const portsRes = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -740,7 +734,7 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
             const poll = async (id: string, setter: (val: any) => void, parser: (out: string) => any) => {
                 let attempts = 0;
                 while (attempts < 10) {
-                    const r = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
+                    const r = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${device.device.id}/tasks?limit=5`, { credentials: 'include' });
                     const tasks = await r.json();
                     const latest = tasks.find((t: any) => t.id === id);
                     if (latest?.status === 'succeeded') {

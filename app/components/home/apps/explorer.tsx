@@ -53,7 +53,7 @@ interface FileSystemItem {
     size?: number; // Added for remote file system
 }
 
-const BASE_URL = "http://139.59.114.151:9100";
+import { BASE_URL } from "@/lib/baseURL";
 
 // --- HOOK ---
 // Simplified hook to manage remote file system

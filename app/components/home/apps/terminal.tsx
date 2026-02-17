@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion";
-import { Terminal as TerminalIcon, X, Maximize2, Plus, Server, RefreshCw, HardDrive, Database, Search } from "lucide-react";
+import { Terminal as TerminalIcon, X, Maximize2, Plus, Server, RefreshCw, Database, Search } from "lucide-react";
 import { getNewZIndex } from "@/lib/z-index-manager";
 import "@xterm/xterm/css/xterm.css";
 
 import { WINDOW_CONSTANTS } from "../window-constants";
-const BASE_URL = "http://139.59.114.151:9100";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface TerminalProps {
     isOpen: boolean;

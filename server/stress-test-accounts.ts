@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { randomBytes } from 'crypto';
 
-const API_BASE_URL = 'http://139.59.114.151:9100';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:9100';
 const TOTAL_ACCOUNTS = 20;
 const BATCH_SIZE = 20; // Process all at once to stress test concurrency
 

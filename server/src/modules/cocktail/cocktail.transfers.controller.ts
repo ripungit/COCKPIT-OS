@@ -68,7 +68,7 @@ export class CocktailTransfersController {
             .where(eq(cocktailTransfers.id, transferId));
 
         // Enqueue task for agent to download the file from the server to its local path
-        const serverUrl = process.env.API_PUBLIC_URL || 'http://139.59.114.151:9100';
+        const serverUrl = process.env.API_PUBLIC_URL || 'https://cognode.ripun.site';
         await this.cocktailService.createTask(req.user.id, transfer.deviceId, 'fs.pull_from_server', {
             transferId: transfer.id,
             path: transfer.path,

@@ -9,6 +9,7 @@ import { SetupForm } from "@/components/setup/setup-form";
 import { LoginForm } from "@/components/setup/login-form";
 import { DeviceSelectionModal } from "@/components/setup/device-selection-modal"; // Import new component
 import { AnimatePresence, motion } from "framer-motion";
+import { BASE_URL } from "@/lib/baseURL";
 
 export default function Home() {
   const [stage, setStage] = React.useState<'greetings' | 'login' | 'setup' | 'device-selection'>('greetings');
@@ -21,11 +22,11 @@ export default function Home() {
         // Check if reload happened
         const entries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
         if (entries.length > 0 && entries[0].type === "reload") {
-          await fetch("http://139.59.114.151:9100/auth/logout", { method: "POST", credentials: "include" }).catch(() => { });
+          await fetch(`${BASE_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => { });
           return;
         }
 
-        const res = await fetch("http://139.59.114.151:9100/cockpit/vps", { credentials: "include" });
+        const res = await fetch(`${BASE_URL}/cockpit/vps`, { credentials: "include" });
         if (res.ok) {
           setHasSession(true);
           const data = await res.json();
@@ -55,7 +56,7 @@ export default function Home() {
   const handleLoginSuccess = async () => {
     try {
       // Re-fetch devices after login
-      const res = await fetch("http://139.59.114.151:9100/cockpit/vps", { credentials: "include" });
+      const res = await fetch(`${BASE_URL}/cockpit/vps`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         const devicesList = Array.isArray(data) ? data : [];

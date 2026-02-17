@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { WINDOW_CONSTANTS } from "../window-constants";
 import Image from "next/image";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface GalleryProps {
     isOpen: boolean;
@@ -46,8 +47,6 @@ interface GalleryProps {
 }
 
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
-
-const BASE_URL = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || "http://139.59.114.151:9100") : "http://139.59.114.151:9100";
 
 interface RemoteImage {
     name: string;

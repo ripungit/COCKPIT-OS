@@ -28,6 +28,7 @@ import { GlassInterface } from "@/components/common/glass-interface";
 import { ZIndexProvider, WindowManager } from "@/components/home/window-manager";
 import { DesktopContextMenu } from "@/components/home/desktop-context-menu";
 import { BoosterWidget } from "@/components/home/widgets/booster-widget";
+import { BASE_URL } from "@/lib/baseURL";
 
 export default function HomePage() {
     const [isAuthenticated, setIsAuthenticated] = React.useState(false);
@@ -58,6 +59,7 @@ export default function HomePage() {
     const [appClickOrder, setAppClickOrder] = React.useState<string[]>([]);
     const [isWidgetsVisible, setIsWidgetsVisible] = React.useState(true);
     const [isInitialized, setIsInitialized] = React.useState(false);
+    const [isShuttingDown, setIsShuttingDown] = React.useState(false);
 
     // Initialize state from localStorage
     React.useEffect(() => {
@@ -68,7 +70,7 @@ export default function HomePage() {
         // Check authentication status
         const checkAuth = async () => {
             try {
-                const res = await fetch("http://139.59.114.151:9100/auth/me", { credentials: "include" });
+                const res = await fetch(`${BASE_URL}/auth/me`, { credentials: "include" });
                 if (!res.ok) {
                     window.location.href = "/";
                 } else {
@@ -87,6 +89,18 @@ export default function HomePage() {
             localStorage.setItem('cockpit_isWidgetsVisible', String(isWidgetsVisible));
         }
     }, [isWidgetsVisible, isInitialized]);
+
+    // Listen for shutdown event
+    React.useEffect(() => {
+        const handleShutdown = () => {
+            setIsShuttingDown(true);
+            setTimeout(() => {
+                window.location.href = '/setup';
+            }, 3000);
+        };
+        window.addEventListener("cockpit:shutdown", handleShutdown);
+        return () => window.removeEventListener("cockpit:shutdown", handleShutdown);
+    }, []);
 
     // Refs to track window managers
     const windowManagerRefs = React.useRef<Record<string, { bringToFront?: () => void } | undefined>>({});
@@ -865,6 +879,24 @@ export default function HomePage() {
                         activeApps={activeApps}
                     />
                 )}
+
+                {/* Shutdown Overlay */}
+                <AnimatePresence>
+                    {isShuttingDown && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="fixed inset-0 z-[100000] bg-black/10 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none"
+                        >
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+                                <span className="text-white font-medium text-lg">Shutting Down...</span>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
             </div>
         </ZIndexProvider>

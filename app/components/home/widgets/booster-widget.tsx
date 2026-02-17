@@ -5,6 +5,7 @@ import { GlassInterface } from "@/components/common/glass-interface";
 import { getCsrfToken } from "@/lib/utils";
 import { BellRing, BrushCleaning, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BASE_URL } from "@/lib/baseURL";
 
 export interface BoosterWidgetProps {
     onClick?: () => void;
@@ -16,15 +17,7 @@ export function BoosterWidget({ onClick }: BoosterWidgetProps) {
     const [progress, setProgress] = useState(0);
     const [lastCleaned, setLastCleaned] = useState<number | null>(null);
 
-    const getBaseUrl = () => {
-        const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-        if (env) return env.replace(/\/$/, "");
-        if (typeof window !== "undefined") {
-            const { hostname, protocol } = window.location;
-            return `${protocol}//${hostname}:9100`;
-        }
-        return "http://139.59.114.151:9100";
-    };
+
 
     const startCleaning = async () => {
         if (isCleaning) return;
@@ -33,7 +26,7 @@ export function BoosterWidget({ onClick }: BoosterWidgetProps) {
         setCleanedMB(0);
 
         // Start real cleanup in background
-        const cleanupPromise = fetch(`${getBaseUrl()}/cockpit/system/boost`, {
+        const cleanupPromise = fetch(`${BASE_URL}/cockpit/system/boost`, {
             method: 'POST',
             mode: 'cors',
             headers: {

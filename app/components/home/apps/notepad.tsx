@@ -19,6 +19,7 @@ import {
     Loader2
 } from "lucide-react";
 import { WINDOW_CONSTANTS } from "../window-constants";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface NotepadProps {
     isOpen: boolean;
@@ -36,15 +37,7 @@ interface Note {
 
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
-function getBaseUrl() {
-    const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (env) return env.replace(/\/$/, "");
-    if (typeof window !== "undefined") {
-        const { hostname, protocol } = window.location;
-        return `${protocol}//${hostname}:9100`;
-    }
-    return "http://139.59.114.151:9100";
-}
+
 
 export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
     const [size, setSize] = useState({ width: 800, height: 600 });
@@ -107,7 +100,7 @@ export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
     const fetchNotes = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/notes`, { credentials: "include" });
+            const res = await fetch(`${BASE_URL}/cockpit/notes`, { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 setNotes(data);
@@ -122,7 +115,7 @@ export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
     // Create new note
     const createNote = async () => {
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/notes`, {
+            const res = await fetch(`${BASE_URL}/cockpit/notes`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -146,7 +139,7 @@ export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
         if (!activeNote) return;
         setIsSaving(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/notes/${activeNote.id}`, {
+            const res = await fetch(`${BASE_URL}/cockpit/notes/${activeNote.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -168,7 +161,7 @@ export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
     // Delete note
     const deleteNote = async (noteId: string) => {
         try {
-            const res = await fetch(`${getBaseUrl()}/cockpit/notes/${noteId}`, {
+            const res = await fetch(`${BASE_URL}/cockpit/notes/${noteId}`, {
                 method: "DELETE",
                 credentials: "include",
             });

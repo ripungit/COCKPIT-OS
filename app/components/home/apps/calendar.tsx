@@ -20,6 +20,7 @@ import {
     Trash2
 } from "lucide-react";
 import { WINDOW_CONSTANTS } from "../window-constants";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface CalendarProps {
     isOpen: boolean;
@@ -36,15 +37,7 @@ const MONTHS = [
 
 const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-function getBaseUrl() {
-    const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (env) return env.replace(/\/$/, "");
-    if (typeof window !== "undefined") {
-        const { hostname, protocol } = window.location;
-        return `${protocol}//${hostname}:9100`;
-    }
-    return "http://139.59.114.151:9100";
-}
+
 
 function useCalendar(isOpen: boolean) {
     const [events, setEvents] = useState<any[]>([]);
@@ -54,7 +47,7 @@ function useCalendar(isOpen: boolean) {
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${getBaseUrl()}/calendar/events`, { credentials: "include" });
+            const res = await fetch(`${BASE_URL}/calendar/events`, { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 setEvents(data);
@@ -79,7 +72,7 @@ function useCalendar(isOpen: boolean) {
         let reconnectTimeout: any;
 
         const connect = () => {
-            const wsUrl = getBaseUrl().replace(/^http/, "ws") + "/calendar/ws";
+            const wsUrl = BASE_URL.replace(/^http/, "ws") + "/calendar/ws";
             socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
@@ -122,7 +115,7 @@ function useCalendar(isOpen: boolean) {
 
     const addEvent = async (event: any) => {
         try {
-            const res = await fetch(`${getBaseUrl()}/calendar/events`, {
+            const res = await fetch(`${BASE_URL}/calendar/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(event),
@@ -137,7 +130,7 @@ function useCalendar(isOpen: boolean) {
 
     const updateEvent = async (event: any) => {
         try {
-            const res = await fetch(`${getBaseUrl()}/calendar/events/${event.id}`, {
+            const res = await fetch(`${BASE_URL}/calendar/events/${event.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(event),
@@ -152,7 +145,7 @@ function useCalendar(isOpen: boolean) {
 
     const deleteEvent = async (id: string) => {
         try {
-            const res = await fetch(`${getBaseUrl()}/calendar/events/${id}`, {
+            const res = await fetch(`${BASE_URL}/calendar/events/${id}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });

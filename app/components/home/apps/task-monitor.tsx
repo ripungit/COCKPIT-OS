@@ -26,6 +26,7 @@ import {
     Settings
 } from "lucide-react";
 import { WINDOW_CONSTANTS } from "../window-constants";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface TaskMonitorProps {
     isOpen: boolean;
@@ -117,21 +118,7 @@ function formatShortUptime(totalSeconds: number) {
     return `${m}m`;
 }
 
-function getBaseUrl() {
-    // 1) Prefer explicit env
-    const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (env) return env.replace(/\/$/, "");
 
-    // 2) Browser logic: if we are on a remote host, assume API is on 9100 of that host
-    if (typeof window !== "undefined") {
-        const { hostname, protocol } = window.location;
-        // If we're on localhost:3000, we still need to point to :9100
-        return `${protocol}//${hostname}:9100`;
-    }
-
-    // 3) Fallback
-    return "http://139.59.114.151:9100";
-}
 
 function normalizeMetrics(raw: any): NormalizedMetrics {
     const cpuRaw = raw?.cpu ?? {};
@@ -202,13 +189,7 @@ function useDeviceStreamWs(deviceId: string | null, enabled: boolean) {
     const [ws, setWs] = useState<WebSocket | null>(null);
     const [retryCount, setRetryCount] = useState(0);
 
-    const getBaseUrl = () => {
-        if (typeof window !== "undefined") {
-            const url = window.location.origin;
-            return url.includes("localhost") ? "http://139.59.114.151:9100" : url;
-        }
-        return "";
-    };
+
 
     useEffect(() => {
         if (!enabled || !deviceId) {
@@ -224,7 +205,7 @@ function useDeviceStreamWs(deviceId: string | null, enabled: boolean) {
         let heartbeatInterval: any;
         let reconnectTimeout: any;
 
-        const base = getBaseUrl();
+        const base = BASE_URL;
         const wsUrl = base.replace(/^http/, "ws") + "/cockpit/cocktail/ws/ui";
         const socket = new WebSocket(wsUrl);
 
@@ -395,7 +376,7 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
         setRepairStatus('connecting');
         setRepairLogs(["[System] Initializing repair session...", `[System] Target VPS: ${device.vps.host}`]);
 
-        const base = getBaseUrl();
+        const base = BASE_URL;
 
         try {
             // 1. Create a terminal session first
@@ -514,7 +495,7 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
         return () => window.removeEventListener("cocktail_boost_log", handler);
     }, []);
 
-    const BASE_URL = getBaseUrl();
+
 
     // Consider stale if lastSeenAt older than this
     const STALE_MS = 20_000;

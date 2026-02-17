@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { BASE_URL } from "./lib/baseURL";
 
 const nextConfig: NextConfig = {
   images: {
@@ -8,7 +9,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/user/:path*",
-        destination: "http://139.59.114.151:9100/:path*",
+        destination: `${BASE_URL}/:path*`,
       },
     ];
   },

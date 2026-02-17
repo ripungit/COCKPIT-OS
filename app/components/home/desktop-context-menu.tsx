@@ -153,13 +153,13 @@ export function DesktopContextMenu({ x, y, onClose, activeApps }: DesktopContext
           window.dispatchEvent(event);
         }
       },
-      { label: "", icon: () => null, divider: true },
-      {
-        label: "Get Info", icon: Info, shortcut: "⌘I", action: () => {
-          const event = new CustomEvent('cockpit:open-app', { detail: { app: 'Finder' } });
-          window.dispatchEvent(event);
-        }
-      },
+      // { label: "", icon: () => null, divider: true },
+      // {
+      //   label: "Get Info", icon: Info, shortcut: "⌘I", action: () => {
+      //     const event = new CustomEvent('cockpit:open-app', { detail: { app: 'Finder' } });
+      //     window.dispatchEvent(event);
+      //   }
+      // },
       {
         label: "Change Background", icon: Image, action: () => {
           const event = new CustomEvent('openBackgroundSelector');
@@ -222,7 +222,7 @@ export function DesktopContextMenu({ x, y, onClose, activeApps }: DesktopContext
       },
       { label: "", icon: () => null, divider: true },
       { label: "Refresh", icon: RotateCcw, action: () => window.location.reload() },
-      { label: "Shut Down", icon: Power, action: () => window.location.href = '/setup' },
+      { label: "Shut Down", icon: Power, action: () => window.dispatchEvent(new Event('cockpit:shutdown')) },
     ],
     [activeApps]
   );

@@ -43,6 +43,7 @@ import {
     Puzzle,
 } from "lucide-react";
 import { LiquidGlass } from "@/components/common/liquid-glass";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface MenubarProps {
     onCalendarClick?: () => void;
@@ -159,15 +160,7 @@ export function Menubar({
     // Used to ignore outside-click closing when clicking INSIDE portal menus.
     const PORTAL_MENU_CLASS = "cockpit-portal-menu";
 
-    const getBaseUrl = () => {
-        const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-        if (env) return env.replace(/\/$/, "");
-        if (typeof window !== "undefined") {
-            const { hostname, protocol } = window.location;
-            return `${protocol}//${hostname}:9100`;
-        }
-        return "http://139.59.114.151:9100";
-    };
+
 
     const getBatteryIcon = () => {
         if (battery.charging) return <PlugZap2 className="w-4 h-4 text-white fill-white" />;
@@ -205,7 +198,7 @@ export function Menubar({
 
                 // Download a larger file from our own server to measure real bandwidth
                 // We'll use a 100KB chunk for accurate measurement
-                const testUrl = `${getBaseUrl()}/cockpit/speedtest?size=102400&t=${Date.now()}`;
+                const testUrl = `${BASE_URL}/cockpit/speedtest?size=102400&t=${Date.now()}`;
 
                 const startTime = performance.now();
 
@@ -456,7 +449,7 @@ export function Menubar({
     useEffect(() => {
         const fetchDevices = async () => {
             try {
-                const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices`, { credentials: "include" });
+                const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices`, { credentials: "include" });
                 if (res.ok) {
                     const data = await res.json();
                     const deviceList = (data || [])
@@ -489,7 +482,7 @@ export function Menubar({
 
         const fetchMetrics = async () => {
             try {
-                const res = await fetch(`${getBaseUrl()}/cockpit/cocktail/devices/${selectedDeviceId}/metrics/latest`, {
+                const res = await fetch(`${BASE_URL}/cockpit/cocktail/devices/${selectedDeviceId}/metrics/latest`, {
                     credentials: "include",
                     cache: "no-store",
                 });

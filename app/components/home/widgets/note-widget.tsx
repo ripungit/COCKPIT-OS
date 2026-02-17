@@ -3,20 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { GlassInterface } from "@/components/common/glass-interface";
 import { FileText, PenLine, Plus } from "lucide-react";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface NoteWidgetProps {
     onClick?: () => void;
 }
 
-function getBaseUrl() {
-    const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (env) return env.replace(/\/$/, "");
-    if (typeof window !== "undefined") {
-        const { hostname, protocol } = window.location;
-        return `${protocol}//${hostname}:9100`;
-    }
-    return "http://139.59.114.151:9100";
-}
+
 
 export function NoteWidget({ onClick }: NoteWidgetProps) {
     const [latestNote, setLatestNote] = useState<{ title: string; content: string } | null>(null);
@@ -25,7 +18,7 @@ export function NoteWidget({ onClick }: NoteWidgetProps) {
     useEffect(() => {
         const fetchLatestNote = async () => {
             try {
-                const res = await fetch(`${getBaseUrl()}/cockpit/notes`, { credentials: "include" });
+                const res = await fetch(`${BASE_URL}/cockpit/notes`, { credentials: "include" });
                 if (res.ok) {
                     const notes = await res.json();
                     setNoteCount(notes.length);

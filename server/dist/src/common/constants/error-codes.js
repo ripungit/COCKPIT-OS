@@ -1,0 +1,31 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ErrorCodes = void 0;
+var ErrorCodes;
+(function (ErrorCodes) {
+    ErrorCodes["INTERNAL_ERROR"] = "INTERNAL_ERROR";
+    ErrorCodes["BAD_REQUEST"] = "BAD_REQUEST";
+    ErrorCodes["UNAUTHORIZED"] = "UNAUTHORIZED";
+    ErrorCodes["FORBIDDEN"] = "FORBIDDEN";
+    ErrorCodes["NOT_FOUND"] = "NOT_FOUND";
+    ErrorCodes["CONFLICT"] = "CONFLICT";
+    ErrorCodes["RATE_LIMITED"] = "RATE_LIMITED";
+    ErrorCodes["VALIDATION_ERROR"] = "VALIDATION_ERROR";
+    ErrorCodes["INVALID_CREDENTIALS"] = "INVALID_CREDENTIALS";
+    ErrorCodes["SESSION_REQUIRED"] = "SESSION_REQUIRED";
+    ErrorCodes["SESSION_INVALID"] = "SESSION_INVALID";
+    ErrorCodes["CSRF_INVALID"] = "CSRF_INVALID";
+    ErrorCodes["INSUFFICIENT_ROLE"] = "INSUFFICIENT_ROLE";
+    ErrorCodes["USER_NOT_FOUND"] = "USER_NOT_FOUND";
+    ErrorCodes["USER_EXISTS"] = "USER_EXISTS";
+    ErrorCodes["EMAIL_EXISTS"] = "EMAIL_EXISTS";
+    ErrorCodes["USERNAME_EXISTS"] = "USERNAME_EXISTS";
+    ErrorCodes["PASSKEY_NOT_FOUND"] = "PASSKEY_NOT_FOUND";
+    ErrorCodes["PASSKEY_REGISTRATION_FAILED"] = "PASSKEY_REGISTRATION_FAILED";
+    ErrorCodes["PASSKEY_AUTHENTICATION_FAILED"] = "PASSKEY_AUTHENTICATION_FAILED";
+    ErrorCodes["CHALLENGE_EXPIRED"] = "CHALLENGE_EXPIRED";
+    ErrorCodes["CHALLENGE_NOT_FOUND"] = "CHALLENGE_NOT_FOUND";
+    ErrorCodes["PROJECT_NOT_FOUND"] = "PROJECT_NOT_FOUND";
+    ErrorCodes["PROJECT_FORBIDDEN"] = "PROJECT_FORBIDDEN";
+})(ErrorCodes || (exports.ErrorCodes = ErrorCodes = {}));
+//# sourceMappingURL=error-codes.js.map

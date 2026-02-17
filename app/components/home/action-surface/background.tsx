@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { getCsrfToken } from "@/lib/utils";
+import { BASE_URL } from "@/lib/baseURL";
 
 interface BackgroundSelectorProps {
   isOpen: boolean;
@@ -209,15 +210,7 @@ export function BackgroundChanger({
   const [background, setBackground] = useState(currentBackground);
   const [showSelector, setShowSelector] = useState(false);
 
-  const getBaseUrl = () => {
-    const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (env) return env.replace(/\/$/, "");
-    if (typeof window !== "undefined") {
-      const { hostname, protocol } = window.location;
-      return `${protocol}//${hostname}:9100`;
-    }
-    return "http://139.59.114.151:9100";
-  };
+
 
   const handleChangeBackground = async (newBackground: string) => {
     setBackground(newBackground);
@@ -228,7 +221,7 @@ export function BackgroundChanger({
     if (match && match[1]) {
       const id = parseInt(match[1]);
       try {
-        await fetch(`${getBaseUrl()}/cockpit/wallpaper`, {
+        await fetch(`${BASE_URL}/cockpit/wallpaper`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -253,7 +246,7 @@ export function BackgroundChanger({
   useEffect(() => {
     const fetchWallpaper = async () => {
       try {
-        const res = await fetch(`${getBaseUrl()}/cockpit/wallpaper`, {
+        const res = await fetch(`${BASE_URL}/cockpit/wallpaper`, {
           credentials: 'include'
         });
         if (res.ok) {

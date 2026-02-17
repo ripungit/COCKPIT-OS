@@ -127,7 +127,7 @@ const systemMenuItems: MenuItem[] = [
     {
         label: "Shut Down",
         icon: Power,
-        action: () => console.log("Shut Down clicked")
+        action: () => window.dispatchEvent(new Event('cockpit:shutdown'))
     },
     {
         label: "",

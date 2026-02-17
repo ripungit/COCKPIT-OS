@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { X, Terminal as TerminalIcon, Monitor, User, Lock, Globe, ArrowRight, ChevronRight, CheckCircle2, Eye, EyeOff, Link2, Loader2, Sparkles, AlertCircle, PartyPopperIcon, Hash } from "lucide-react";
+import { BASE_URL } from "@/lib/baseURL";
 import { motion, AnimatePresence } from "framer-motion";
 import "@xterm/xterm/css/xterm.css";
 
@@ -65,7 +66,7 @@ export function SetupForm() {
             const term = new Terminal();
             termRef.current = term;
 
-            const res = await fetch(`http://139.59.114.151:9100/cockpit/vps/${vpsId}/terminal/sessions`, {
+            const res = await fetch(`${BASE_URL}/cockpit/vps/${vpsId}/terminal/sessions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -74,8 +75,8 @@ export function SetupForm() {
             if (!res.ok) throw new Error("Terminal session failed");
             const { sessionId } = await res.json();
 
-            const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            const ws = new WebSocket(`${protocol}//${window.location.hostname}:9100/cockpit/terminal/ws?id=${sessionId}`);
+            const wsUrl = BASE_URL.replace(/^http/, "ws");
+            const ws = new WebSocket(`${wsUrl}/cockpit/terminal/ws?id=${sessionId}`);
             wsRef.current = ws;
 
             let shellReady = false;
@@ -154,7 +155,7 @@ export function SetupForm() {
             setLogs([]);
 
             // Step 1: Create VPS
-            const vpsRes = await fetch("http://139.59.114.151:9100/cockpit/vps", {
+            const vpsRes = await fetch(`${BASE_URL}/cockpit/vps`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -173,7 +174,7 @@ export function SetupForm() {
 
             // Step 2: Verify
             setStatus('verifying');
-            const verifyRes = await fetch(`http://139.59.114.151:9100/cockpit/vps/${vpsId}/verify`, {
+            const verifyRes = await fetch(`${BASE_URL}/cockpit/vps/${vpsId}/verify`, {
                 method: "POST",
                 credentials: "include"
             });
@@ -194,7 +195,7 @@ export function SetupForm() {
 
             // Step 3: Enroll
             setStatus('enrolling');
-            const enrollRes = await fetch(`http://139.59.114.151:9100/cockpit/cocktail/devices/enroll/start`, {
+            const enrollRes = await fetch(`${BASE_URL}/cockpit/cocktail/devices/enroll/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ vpsId }),

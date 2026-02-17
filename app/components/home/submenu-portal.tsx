@@ -61,12 +61,12 @@ export function SubmenuPortal({ items, position, onClose, onItemClick, parentLab
 
     const handleItemClick = (item: MenuItem) => {
         if (item.disabled) return;
-        
+
         if (item.submenu && item.submenu.length > 0) {
             // Handle nested submenu
             return;
         }
-        
+
         if (item.action) {
             try {
                 item.action();
@@ -89,14 +89,14 @@ export function SubmenuPortal({ items, position, onClose, onItemClick, parentLab
 
         // Store the element reference immediately
         const targetElement = event.currentTarget as HTMLElement;
-        
+
         submenuTimerRef.current = setTimeout(() => {
             try {
                 // Check if element still exists
                 if (!targetElement || !document.contains(targetElement)) {
                     return;
                 }
-                
+
                 const rect = targetElement.getBoundingClientRect();
                 const nestedPosition = calculateNestedSubmenuPosition(rect);
                 setNestedSubmenu({
@@ -112,54 +112,54 @@ export function SubmenuPortal({ items, position, onClose, onItemClick, parentLab
     const calculateNestedSubmenuPosition = (triggerRect: DOMRect) => {
         const submenuWidth = 200;
         const submenuHeight = (nestedSubmenu?.item.submenu?.length || 5) * 32;
-        
+
         // Use consistent padding values
         const minPad = 16;
         const maxPad = 20;
         const gap = 8;
-        
+
         let left = triggerRect.right + gap;
         let top = triggerRect.top - 6;
-        
+
         // Right edge overflow - position to the left
         if (left + submenuWidth > window.innerWidth - maxPad) {
             left = triggerRect.left - submenuWidth - gap;
         }
-        
+
         // Bottom edge overflow - position above
         if (top + submenuHeight > window.innerHeight - maxPad) {
             top = triggerRect.top - submenuHeight + triggerRect.height + 6;
         }
-        
+
         // Final clamping to ensure it stays within viewport with proper padding
         // Left edge
         if (left < minPad) {
             left = minPad;
         }
-        
+
         // Right edge (double-check)
         if (left + submenuWidth > window.innerWidth - maxPad) {
             left = window.innerWidth - submenuWidth - maxPad;
         }
-        
+
         // Top edge
         if (top < minPad) {
             top = minPad;
         }
-        
+
         // Bottom edge (double-check)
         if (top + submenuHeight > window.innerHeight - maxPad) {
             top = window.innerHeight - submenuHeight - maxPad;
         }
-        
+
         return { top, left };
     };
 
     const renderMenuItem = (item: MenuItem, index: number) => {
         if (item.divider) {
             return (
-                <div 
-                    key={index} 
+                <div
+                    key={index}
                     className="my-1 border-t border-white/10 mx-2"
                 />
             );
@@ -170,11 +170,10 @@ export function SubmenuPortal({ items, position, onClose, onItemClick, parentLab
         return (
             <div key={index} className="relative">
                 <button
-                    className={`w-full flex items-center gap-3 px-3 py-1.5 text-left text-[13px] font-medium transition-colors ${
-                        item.disabled 
-                            ? 'text-white/30 cursor-not-allowed' 
+                    className={`w-full flex items-center gap-3 px-3 py-1.5 text-left text-[13px] font-medium transition-colors ${item.disabled
+                            ? 'text-white/30 cursor-not-allowed'
                             : 'text-white hover:bg-white/10 cursor-pointer'
-                    }`}
+                        }`}
                     onClick={(e) => {
                         e.stopPropagation();
                         handleItemClick(item);

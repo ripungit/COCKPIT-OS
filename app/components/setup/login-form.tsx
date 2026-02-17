@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { User, Lock, Eye, EyeOff, ChevronRight, AlertCircle, Loader2, Mail, Type, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { BASE_URL } from "@/lib/baseURL";
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -42,7 +43,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("http://139.59.114.151:9100/auth/login/password", {
+            const res = await fetch(`${BASE_URL}/auth/login/password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(loginData),
@@ -70,7 +71,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("http://139.59.114.151:9100/auth/signup/start", {
+            const res = await fetch(`${BASE_URL}/auth/signup/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -104,7 +105,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("http://139.59.114.151:9100/auth/signup/verify", {
+            const res = await fetch(`${BASE_URL}/auth/signup/verify`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -136,7 +137,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("http://139.59.114.151:9100/auth/signup/password", {
+            const res = await fetch(`${BASE_URL}/auth/signup/password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
