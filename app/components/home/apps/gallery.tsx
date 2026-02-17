@@ -24,6 +24,7 @@ import {
     Minimize2,
     X,
     Image as ImageIcon,
+
     RefreshCw,
     Database,
     CheckIcon,
@@ -31,8 +32,11 @@ import {
     Hash,
     Terminal,
     AlertTriangle,
-    Check
+    Check,
+    Loader2,
+    HardDrive
 } from "lucide-react";
+import { WINDOW_CONSTANTS } from "../window-constants";
 import Image from "next/image";
 
 interface GalleryProps {
@@ -558,16 +562,14 @@ export function Gallery({ isOpen, onClose, onMinimize }: GalleryProps) {
 
         setPreMaximizeState({ size, pos: { x: x.get(), y: y.get() } });
 
-        const horizontalPadding = 12;
-        const menuHeight = 32;
-        const dockHeight = 130;
+        const { MENU_HEIGHT, DOCK_HEIGHT, HORIZONTAL_PADDING } = WINDOW_CONSTANTS;
 
-        const availableW = window.innerWidth - horizontalPadding * 2;
-        const availableH = window.innerHeight - menuHeight - dockHeight;
+        const availableW = window.innerWidth - HORIZONTAL_PADDING * 2;
+        const availableH = window.innerHeight - MENU_HEIGHT - DOCK_HEIGHT;
 
         setSize({ width: availableW, height: availableH });
 
-        const targetY = menuHeight - window.innerHeight / 2 + availableH / 2;
+        const targetY = MENU_HEIGHT - window.innerHeight / 2 + availableH / 2;
 
         import("framer-motion").then(({ animate }) => {
             animate(x, 0, springConfig);

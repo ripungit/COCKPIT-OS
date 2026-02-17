@@ -3,49 +3,22 @@
 import { GlassInterface } from "@/components/common/glass-interface";
 import "@/components/common/styles/glass-interface.css";
 import {
-    Search,
-    Grid,
-    Compass,
-    MessageCircle,
-    Mail,
-    MapPin,
     Image as ImageIcon,
-    Video,
-    Phone,
     Calendar,
-    User,
-    List,
-    Settings,
     Folder,
-    Monitor,
-    MonitorCogIcon,
-    TriangleAlert,
-    TriangleDashed,
     Activity,
-    MailIcon,
     MailOpen,
     Images,
     Settings2,
-    Calculator,
-    Calendar1,
-    Cloud,
     ExternalLink,
     X,
     Terminal,
-    Music,
     Info
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     SiGoogle,
-    SiSafari,
-    SiGooglemaps,
-    SiGooglephotos,
-    SiApple,
-    SiGooglecalendar,
-    SiIcloud,
-    SiGmail,
     SiBrave
 } from "@icons-pack/react-simple-icons";
 import { useState } from "react";

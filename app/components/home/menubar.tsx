@@ -790,7 +790,7 @@ export function Menubar({
 
     return (
         <div
-            className={`fixed top-0 left-0 right-0 h-8 flex items-center justify-between px-4 z-50 text-[13px] font-medium text-white/90 ${transparent ? "bg-transparent border-transparent" : "bg-white/10 backdrop-blur-md border-b border-white/10"
+            className={`fixed top-0 p-5 left-0 right-0 h-8 flex items-center justify-between px-4 z-50 text-[13px] font-medium text-white/90 ${transparent ? "bg-transparent border-transparent" : "bg-white/10 backdrop-blur-3xl border-b border-white/10"
                 }`}
         >
             <div className="flex items-center gap-1">
@@ -876,8 +876,14 @@ export function Menubar({
                     <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded transition-colors cursor-default">
                         {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5 text-red-400" />}
                         {isOnline && (
-                            <span className="text-[10px] tabular-nums text-white/80">
-                                {internetSpeed.testing ? "..." : `${internetSpeed.download} Mbps`}
+                            <span className="text-[10px] tabular-nums text-white/80 flex items-center h-4">
+                                {internetSpeed.testing ? (
+                                    <div className="w-14 h-3 bg-white/10 rounded-full overflow-hidden relative">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                                    </div>
+                                ) : (
+                                    `${internetSpeed.download} Mbps`
+                                )}
                             </span>
                         )}
                         <div className={`w-1.5 h-1.5 rounded-full ${!isOnline ? 'bg-red-400' :

@@ -21,7 +21,11 @@ import {
     Maximize2,
     ShieldAlert,
     Clock,
+    Wrench,
+    Loader2,
+    Settings
 } from "lucide-react";
+import { WINDOW_CONSTANTS } from "../window-constants";
 
 interface TaskMonitorProps {
     isOpen: boolean;
@@ -370,6 +374,129 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
     const dragControls = useDragControls();
     const x = useMotionValue(0);
     const y = useMotionValue(0);
+    const [repairingVpsId, setRepairingVpsId] = useState<string | null>(null);
+    const [repairLogs, setRepairLogs] = useState<string[]>([]);
+    const [repairStatus, setRepairStatus] = useState<'connecting' | 'running' | 'done' | 'error'>('connecting');
+    const repairScrollRef = React.useRef<HTMLDivElement>(null);
+
+    const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+    useEffect(() => {
+        if (repairScrollRef.current) {
+            repairScrollRef.current.scrollTop = repairScrollRef.current.scrollHeight;
+        }
+    }, [repairLogs]);
+
+    const handleRepair = async () => {
+        const device = devices.find(d => d.device.id === selectedId);
+        if (!device?.vps?.id) return;
+
+        setRepairingVpsId(device.vps.id);
+        setRepairStatus('connecting');
+        setRepairLogs(["[System] Initializing repair session...", `[System] Target VPS: ${device.vps.host}`]);
+
+        const base = getBaseUrl();
+
+        try {
+            // 1. Create a terminal session first
+            const sessionRes = await fetch(`${base}/cockpit/vps/${device.vps.id}/terminal/sessions`, {
+                method: "POST",
+                credentials: "include"
+            });
+
+            if (!sessionRes.ok) throw new Error("Failed to create terminal session");
+            const sessionData = await sessionRes.json();
+            const terminalId = sessionData.sessionId || sessionData.id;
+
+            if (!terminalId) throw new Error("Server returned invalid session ID");
+
+            // 2. Get the official install command from the server (handled by CocktailService)
+            const enrollmentRes = await fetch(`${base}/cockpit/cocktail/devices/enroll/start`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vpsId: device.vps.id }),
+                credentials: "include"
+            });
+
+            if (!enrollmentRes.ok) throw new Error("Failed to fetch official install command");
+            const enrollmentData = await enrollmentRes.json();
+            const officialInstallCmd = enrollmentData.installCommand;
+
+            const wsUrl = base.replace(/^http/, "ws") + `/cockpit/terminal/ws?id=${terminalId}`;
+            const ws = new WebSocket(wsUrl);
+            let shellReady = false;
+
+            ws.onopen = () => {
+                setRepairLogs(prev => [...prev, "[System] WebSocket Tunnel Established."]);
+            };
+
+            ws.onmessage = (ev) => {
+                const msg = JSON.parse(ev.data);
+
+                if (msg.type === "ready") {
+                    setRepairLogs(prev => [...prev, "[System] SSH Handshake Successful."]);
+                }
+
+                if (msg.type === "output") {
+                    const lines = msg.data.split('\r\n');
+                    lines.forEach((line: string) => {
+                        // Aggressive ANSI stripping: Handles colors (m), cursor moves (A-Z, a-z), etc.
+                        const cleanLine = line.replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '').trim();
+
+                        if (cleanLine || line.trim()) {
+                            setRepairLogs(prev => [...prev.slice(-100), cleanLine || line.trim()]);
+
+                            // Improved prompt detection: check for # or $ at the end of clean line
+                            // Or presence of root@...: ...#
+                            const isPrompt = /([#$]\s*|@.*:.*[#$]\s*)$/.test(cleanLine) || cleanLine.endsWith('#') || cleanLine.endsWith('$');
+
+                            if (!shellReady && isPrompt) {
+                                shellReady = true;
+                                setRepairStatus('running');
+                                setRepairLogs(prev => [...prev, "[System] Shell Prompt Detected. Executing Repair..."]);
+
+                                // Send the official install command obtained from the server
+                                setTimeout(() => {
+                                    ws.send(JSON.stringify({ type: "input", data: officialInstallCmd + "\n" }));
+                                }, 1000);
+                            }
+
+                            // Detect completion
+                            if (cleanLine.includes("Cocktail Agent installed and started!")) {
+                                setRepairLogs(prev => [...prev, "[SUCCESS] Repair completed successfully."]);
+                                setRepairStatus('done');
+
+                                // Optimistically clear neofetch error so UI shows loading instead of error
+                                setMetrics(prev => prev ? { ...prev, neofetch: "" } : null);
+
+                                setTimeout(() => {
+                                    ws.close();
+                                    setRepairingVpsId(null);
+                                    setRefreshNonce(n => n + 1);
+                                }, 3000);
+                            }
+                        }
+                    });
+                }
+            };
+
+            ws.onerror = () => {
+                setRepairStatus('error');
+                setRepairLogs(prev => [...prev, "[ERROR] WebSocket connection failed."]);
+            };
+
+            ws.onclose = () => {
+                if (repairStatus !== 'done') {
+                    setRepairStatus('error');
+                    setRepairLogs(prev => [...prev, "[System] Connection closed."]);
+                }
+            };
+
+        } catch (e: any) {
+            setRepairStatus('error');
+            setRepairLogs(prev => [...prev, `[ERROR] ${e.message}`]);
+        }
+    };
 
     // Bootstrap listener for boost logs
     useEffect(() => {
@@ -463,14 +590,18 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
             }
         };
 
-        fetchMetrics();
-        const t = setInterval(fetchMetrics, 2000);
+        const tick = () => {
+            fetchMetrics();
+        };
+
+        const t = setInterval(tick, 2000);
+        tick();
 
         return () => {
             alive = false;
             clearInterval(t);
         };
-    }, [isOpen, selectedId, BASE_URL]);
+    }, [isOpen, selectedId, BASE_URL, refreshNonce, STALE_MS]);
 
     // ---- Processes Polling ----
     useEffect(() => {
@@ -568,16 +699,14 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
 
         setPreMaximizeState({ size, pos: { x: x.get(), y: y.get() } });
 
-        const horizontalPadding = 12;
-        const menuHeight = 32;
-        const dockHeight = 130;
+        const { MENU_HEIGHT, DOCK_HEIGHT, HORIZONTAL_PADDING } = WINDOW_CONSTANTS;
 
-        const availableW = window.innerWidth - horizontalPadding * 2;
-        const availableH = window.innerHeight - menuHeight - dockHeight;
+        const availableW = window.innerWidth - HORIZONTAL_PADDING * 2;
+        const availableH = window.innerHeight - MENU_HEIGHT - DOCK_HEIGHT;
 
         setSize({ width: availableW, height: availableH });
 
-        const targetY = menuHeight - window.innerHeight / 2 + availableH / 2;
+        const targetY = MENU_HEIGHT - window.innerHeight / 2 + availableH / 2;
 
         import("framer-motion").then(({ animate }) => {
             animate(x, 0, springConfig);
@@ -601,6 +730,7 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
 
     const killProcess = async () => {
         if (!selectedId || !selectedPid) return;
+        setIsProcessingAction(true);
         try {
             await fetch(`${BASE_URL}/cockpit/cocktail/devices/${selectedId}/proc/kill`, {
                 method: "POST",
@@ -614,9 +744,11 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                 setIsKillConfirmOpen(false);
                 setSelectedPid(null);
                 setIsSuccess(false);
+                setIsProcessingAction(false);
             }, 1000);
         } catch (e) {
             console.error("Failed to kill process", e);
+            setIsProcessingAction(false);
         }
     };
 
@@ -716,19 +848,19 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                 )}
                             </div>
 
-                            <div className="flex-1 flex justify-center">
-                                <div className="flex w-[580px] bg-white/[0.03] rounded-xl p-1 border border-white/5 shadow-inner">
+                            <div className="flex-1 flex justify-center px-4">
+                                <div className="flex w-full max-w-[580px] bg-white/[0.03] rounded-xl p-1 border border-white/5 shadow-inner">
                                     {[
                                         { id: "performance", icon: Activity, label: "Vitals" },
                                         { id: "processes", icon: Cpu, label: "Processes" },
                                         { id: "network", icon: Network, label: "Stream" },
-                                        { id: "system", icon: TerminalIcon, label: "System Info" },
+                                        { id: "system", icon: TerminalIcon, label: "System" },
                                         { id: "booster", icon: Zap, label: "Booster" },
                                     ].map((tab) => (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all
+                                            className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all
         flex items-center justify-center gap-2
         ${activeTab === tab.id
                                                     ? "bg-white/10 text-white shadow-[0_2px_10px_rgba(255,255,255,0.05)]"
@@ -752,16 +884,16 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                 >
                                     Switch
                                 </button>
-                                <RefreshCw
+                                {/* <RefreshCw
                                     className={`w-4 h-4 mt-1 cursor-pointer transition-all ${isLoadingProcs ? 'animate-spin text-rose-500' : 'hover:text-white text-zinc-500'}`}
                                     onClick={() => setRefreshNonce(n => n + 1)}
-                                />
+                                /> */}
                             </div>
                         </div>
 
                         <div className={`flex-1 flex min-h-0 transition-all duration-300 ${!selectedId ? "blur-md scale-[0.98] pointer-events-none grayscale" : ""}`}>
                             {/* Sidebar */}
-                            <div className="w-60 border-r border-white/5 bg-black p-6 flex flex-col gap-8">
+                            <div className="w-60 min-w-[240px] shrink-0 border-r border-white/5 bg-black p-6 flex flex-col gap-8">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex flex-col">
@@ -851,7 +983,7 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                             </div>
 
                             {/* Main */}
-                            <div className="flex-1 flex flex-col min-h-0 bg-black">
+                            <div className="flex-1 flex flex-col min-h-0 bg-black min-w-0 overflow-hidden">
                                 {activeTab === "performance" ? (
                                     <div className="p-8 flex flex-col gap-8 flex-1 overflow-auto no-scrollbar">
                                         <div className="space-y-4">
@@ -862,13 +994,10 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                                 </h2>
                                                 <div className="flex gap-4">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                        <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">System</span>
+                                                        <div className="w-2 h-2 rounded-full bg-white" />
+                                                        <span className="text-[10px] font-black text-white uppercase tracking-widest">System</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-white/40" />
-                                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Processes</span>
-                                                    </div>
+
                                                 </div>
                                             </div>
 
@@ -1203,7 +1332,7 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                         </div>
                                     </div>
                                 ) : activeTab === "system" ? (
-                                    <div className="flex-1 overflow-auto no-scrollbar p-8">
+                                    <div className="flex-1 overflow-auto no-scrollbar p-8 min-w-0">
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between">
                                                 <h2 className="text-lg font-black text-white flex items-center gap-3">
@@ -1216,32 +1345,77 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                                 </div>
                                             </div>
 
-                                            <div className="bg-[#050505] border border-white/5 rounded-[32px] p-10 font-mono text-[13px] leading-relaxed relative overflow-hidden group/neo shadow-inner min-h-[250px]">
+                                            <div className="bg-[#050505] border border-white/5 rounded-[32px] p-10 text-[13px] leading-relaxed relative overflow-hidden group/neo shadow-inner min-h-[250px]">
                                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.03),transparent)] pointer-events-none" />
 
-                                                {metrics?.neofetch ? (
-                                                    <pre className="text-zinc-300 whitespace-pre font-mono selection:bg-rose-500/30">
+                                                {metrics?.neofetch && !metrics.neofetch.toLowerCase().includes("failed") && !metrics.neofetch.toLowerCase().includes("not found") ? (
+                                                    <pre className="text-zinc-300 whitespace-pre overflow-x-auto no-scrollbar selection:bg-rose-500/30">
                                                         {metrics.neofetch}
                                                     </pre>
                                                 ) : (
-                                                    <div className="h-full flex flex-col items-center justify-center opacity-30 mt-20">
-                                                        <div className="w-12 h-12 rounded-full border-2 border-zinc-700 border-t-rose-500 animate-spin mb-6" />
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Retrieving System Map...</p>
-                                                        <p className="text-[8px] font-bold text-zinc-600 mt-2 italic uppercase">Neofetch capture in progress</p>
+                                                    <div className="h-full flex flex-col items-center justify-center mt-10">
+                                                        <div className={`w-12 h-12 rounded-full border-2 border-zinc-700 ${metrics?.neofetch?.toLowerCase().includes("failed") ? 'border-rose-500/50' : 'border-t-rose-500 animate-spin'} mb-6`} />
+                                                        <p className="text-[14px] font-medium text-white">
+                                                            {metrics?.neofetch?.toLowerCase().includes("failed") ? "Failed to retrieve system map" : "Retrieving System Map..."}
+                                                        </p>
+
+                                                        {metrics?.neofetch?.toLowerCase().includes("failed") && (
+                                                            <div className="flex flex-col items-center gap-4 mt-4 w-full px-10">
+                                                                {/* <div className="w-full bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 mb-2 overflow-auto max-h-[200px]">
+                                                                    <pre className="text-[10px] text-rose-400 font-mono whitespace-pre opacity-80 text-center">
+                                                                        {metrics.neofetch.replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '')}
+                                                                    </pre>
+                                                                </div> */}
+                                                                <p className="text-[10px] font-normal text-white/40 text-center max-w-[300px]">
+                                                                    The system couldn't find fetch tools in its restricted service environment. Repairing will sync the paths.
+                                                                </p>
+                                                                <button
+                                                                    onClick={handleRepair}
+                                                                    className="px-4 py-2 rounded-none bg-rose-500/10 border border-rose-500/20 text-[10px] font-semibold text-white hover:bg-rose-500/20 transition-all uppercase tracking-widest flex items-center gap-2"
+                                                                >
+                                                                    <Wrench className="w-3 h-3" />
+                                                                    Repair Environment
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {!metrics?.neofetch?.toLowerCase().includes("failed") && (
+                                                            <p className="text-[8px] font-bold text-zinc-600 mt-2 italic uppercase opacity-30">System info capture in progress</p>
+                                                        )}
                                                     </div>
                                                 )}
 
                                                 <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none opacity-20" />
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-3 gap-4">
                                                 <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col gap-1">
                                                     <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Capture Interval</span>
                                                     <span className="text-xs font-bold text-white">120 Seconds</span>
                                                 </div>
-                                                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col gap-1">
+                                                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col gap-1 group relative overflow-hidden">
                                                     <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Command Source</span>
-                                                    <span className="text-xs font-bold text-white">/usr/bin/neofetch</span>
+                                                    <span className="text-xs font-bold text-white group-hover:opacity-0 transition-opacity">Fetch Engine</span>
+
+                                                    <button
+                                                        onClick={handleRepair}
+                                                        className="absolute inset-0 bg-rose-950 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 text-[10px] font-semibold text-white cursor-pointer"
+                                                    >
+                                                        <Activity className="w-3 h-3 text-white" />
+                                                        Update Tools
+                                                    </button>
+                                                </div>
+                                                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col gap-1 group relative overflow-hidden">
+                                                    <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Control Unit</span>
+                                                    <span className="text-xs font-bold text-white group-hover:opacity-0 transition-opacity">v2.0.4-LTS</span>
+
+                                                    <button
+                                                        onClick={handleRepair}
+                                                        className="absolute inset-0 bg-rose-950 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 text-[10px] font-semibold text-white cursor-pointer"
+                                                    >
+                                                        <Settings className="w-3 h-3 text-white" />
+                                                        Reinstall Cockpit
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1600,13 +1774,96 @@ export function TaskMonitor({ isOpen, deviceId, onClose, onMinimize }: TaskMonit
                                                     </button>
                                                     <button
                                                         onClick={isKillConfirmOpen ? killProcess : startBoost}
-                                                        disabled={isSuccess}
-                                                        className="py-3 px-4 rounded-xl bg-rose-900 hover:bg-rose-950 text-xs font-bold text-white transition-colors disabled:opacity-0"
+                                                        disabled={isSuccess || isProcessingAction}
+                                                        className={`py-3 px-4 rounded-xl bg-rose-900 hover:bg-rose-950 text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${isSuccess ? 'opacity-0 pointer-events-none' : isProcessingAction ? 'opacity-80 cursor-wait' : ''
+                                                            }`}
                                                     >
-                                                        Confirm
+                                                        {isProcessingAction ? (
+                                                            <>
+                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                                <span>Processing...</span>
+                                                            </>
+                                                        ) : (
+                                                            "Confirm"
+                                                        )}
                                                     </button>
                                                 </>
                                             )}
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        {/* Repair Modal Overlay */}
+                        <AnimatePresence>
+                            {repairingVpsId && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 z-[110] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-12"
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.9, y: 20 }}
+                                        animate={{ scale: 1, y: 0 }}
+                                        className="w-full max-w-2xl bg-[#050505] rounded-[32px] overflow-hidden flex flex-col shadow-2xl"
+                                    >
+                                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-rose-950 flex items-center justify-center">
+                                                    <Wrench className="w-6 h-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-black text-white tracking-tight">Cockpit Update</h3>
+                                                    {/* <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
+                                                        {repairStatus === 'done' ? "Update Complete" : "Running specialized update..."}
+                                                    </p> */}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {repairStatus !== 'done' && repairStatus !== 'error' ? (
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                                        <Loader2 className="w-3 h-3 text-white animate-spin" />
+                                                        <span className="text-[9px] font-semibold text-white uppercase tracking-widest">Updating...</span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setRepairingVpsId(null)}
+                                                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-white uppercase tracking-widest transition-all"
+                                                    >
+                                                        Close
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            ref={repairScrollRef}
+                                            className="h-[300px] p-8 overflow-y-auto font-mono text-[11px] leading-relaxed flex flex-col gap-2 bg-black/20"
+                                        >
+                                            {repairLogs.map((log, i) => (
+                                                <div key={i} className="flex gap-3">
+                                                    <span className="text-zinc-700 shrink-0 select-none">[{i + 1}]</span>
+                                                    <span className={`break-all ${log.startsWith('[SUCCESS]') ? 'text-emerald-400 font-bold' : log.startsWith('[ERROR]') ? 'text-rose-500 font-bold' : log.startsWith('[System]') ? 'text-white' : 'text-zinc-300'}`}>
+                                                        {log}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {repairStatus === 'connecting' && (
+                                                <div className="flex items-center gap-2 text-zinc-500 mt-2">
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    <span>Waiting for VPS handshake...</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-6 bg-rose-950/40 border-t border-white/5">
+                                            <div className="flex items-center gap-3 text-white">
+                                                <Shield className="w-4 h-4" />
+                                                <p className="text-[10px] font-medium leading-relaxed">
+                                                    Please do not close this window. We are updating the remote agent and installing OS-specific fetch tools on your VPS. This process usually takes 20-30 seconds.
+                                                </p>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 </motion.div>

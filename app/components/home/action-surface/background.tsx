@@ -271,7 +271,7 @@ export function BackgroundChanger({
 
       // Fallback if no wallpaper set
       if (!background) {
-        const defaultBg = "/wallpaper/11.jpg";
+        const defaultBg = "/wallpaper/28.jpg";
         setBackground(defaultBg);
         onChangeBackground?.(defaultBg);
       }

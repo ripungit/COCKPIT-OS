@@ -120,12 +120,12 @@ const systemMenuItems: MenuItem[] = [
         action: () => console.log("Sleep clicked")
     },
     {
-        label: "Restart...",
+        label: "Refresh",
         icon: RotateCcw,
         action: () => console.log("Restart clicked")
     },
     {
-        label: "Shut Down...",
+        label: "Shut Down",
         icon: Power,
         action: () => console.log("Shut Down clicked")
     },

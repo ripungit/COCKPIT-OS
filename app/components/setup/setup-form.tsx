@@ -9,6 +9,7 @@ export function SetupForm() {
     const [mode, setMode] = useState<'new' | 'existing'>('new');
     const [showPassword, setShowPassword] = useState(false);
     const [status, setStatus] = useState<'idle' | 'connecting' | 'verifying' | 'enrolling' | 'installing' | 'success' | 'error'>('idle');
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [failStage, setFailStage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
     const [logs, setLogs] = useState<string[]>([]);
@@ -33,6 +34,17 @@ export function SetupForm() {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [logs]);
+
+    // Timer logic
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (['connecting', 'verifying', 'enrolling', 'installing'].includes(status)) {
+            interval = setInterval(() => {
+                setElapsedSeconds(prev => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [status]);
 
     // Cleanup
     useEffect(() => {
@@ -95,6 +107,16 @@ export function SetupForm() {
                                     ws.send(JSON.stringify({ type: "input", data: installCommand + "\r" }));
                                 }, 800);
                             }
+
+                            // Success Detection: Watch for success message or prompt return after start
+                            if (shellReady && (
+                                trimmed.includes("Cocktail Agent installed and started!") ||
+                                (trimmed.includes("Active: active (running)") && trimmed.includes("cocktail.service")) ||
+                                (trimmed.includes("E: Unable to locate package neofetch") && logs.some(l => l.includes("installed and started")))
+                            )) {
+                                setTimeout(() => setStatus('success'), 2000);
+                            }
+
                             addLog(trimmed);
                         }
                     });
@@ -113,14 +135,22 @@ export function SetupForm() {
         }
     };
 
-    const handleConnect = async () => {
-        if (status !== 'idle' && status !== 'error') return;
+    const [isRedeploying, setIsRedeploying] = useState(false);
+
+    const handleConnect = async (force: boolean = false) => {
+        if (!force && status !== 'idle' && status !== 'error') return;
+
+        if (force) {
+            setIsRedeploying(true);
+            if (wsRef.current) wsRef.current.close();
+        }
 
         try {
             setFailStage(null);
             setErrorMessage("");
             setSuggestedPorts([]);
             setStatus('connecting');
+            setElapsedSeconds(0);
             setLogs([]);
 
             // Step 1: Create VPS
@@ -182,7 +212,7 @@ export function SetupForm() {
                 fullCommand += " && sudo npm install -g ws";
             }
             // Automatically exit SSH when command finishes
-            fullCommand += " && exit";
+            fullCommand += " ; exit";
 
             initTerminalPipe(vpsId, fullCommand);
 
@@ -192,6 +222,8 @@ export function SetupForm() {
             setErrorMessage(msg);
             addLog(`✖ ERROR: ${msg}`);
             setStatus('error');
+        } finally {
+            setIsRedeploying(false);
         }
     };
 
@@ -389,15 +421,15 @@ export function SetupForm() {
 
                 {status !== 'success' && (
                     <div className="flex items-center justify-between pt-6 border-t border-white/10">
-                        <button
+                        {/* <button
                             onClick={() => setMode(mode === 'new' ? 'existing' : 'new')}
                             className="text-[13px] text-[#fff] hover:underline flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                         >
                             <CheckCircle2 className="w-4 h-4 text-[#fff]" />
                             {mode === 'new' ? "Already have a device?" : "Setup new device?"}
-                        </button>
+                        </button> */}
                         <button
-                            onClick={handleConnect}
+                            onClick={() => handleConnect()}
                             disabled={!isFormValid || (status !== 'idle' && status !== 'error')}
                             className={`group px-6 py-3 rounded-full font-semibold text-[15px] flex items-center gap-2 transition-all duration-300 ${isFormValid && (status === 'idle' || status === 'error')
                                 ? "bg-[#fff] text-black hover:bg-[#fff]/90 cursor-pointer shadow-lg shadow-[#fff]/20"
@@ -440,6 +472,11 @@ export function SetupForm() {
                         <span className="text-white/50 font-medium tracking-tight">
                             ssh {formData.port !== 22 ? `-p ${formData.port} ` : ''}{formData.user || "root"}@{formData.host || "host"}
                         </span>
+                        {elapsedSeconds > 0 && status !== 'success' && status !== 'error' && (
+                            <div className="ml-auto text-white text-[11px] font-semibold tabular-nums">
+                                {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
+                            </div>
+                        )}
                     </div>
 
                     {/* Connection Progress Timeline */}
@@ -554,15 +591,37 @@ export function SetupForm() {
 
                         <div className="pt-2">
                             {status !== 'success' && status !== 'error' && (
-                                <motion.div
-                                    animate={{ opacity: [0, 1, 0] }}
-                                    transition={{ repeat: Infinity, duration: 1 }}
-                                    className="w-2 h-4 bg-white/40"
-                                />
+                                <div className="space-y-4">
+                                    <motion.div
+                                        animate={{ opacity: [0, 1, 0] }}
+                                        transition={{ repeat: Infinity, duration: 1 }}
+                                        className="w-2 h-4 bg-white/40"
+                                    />
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
+
+                <AnimatePresence>
+                    {elapsedSeconds > 300 && status !== 'success' && status !== 'error' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="mt-4 relative z-20"
+                        >
+                            <button
+                                onClick={() => handleConnect(true)}
+                                disabled={isRedeploying}
+                                className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/80 text-[10px] font-bold rounded-lg transition-all border border-white/5 flex items-center justify-center gap-2 tracking-widest uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Loader2 className={`w-3 h-3 animate-spin ${isRedeploying ? 'block' : 'hidden'}`} />
+                                {isRedeploying ? "Redeploying..." : "Setup taking too long? Redeploy"}
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <div className="mt-auto pt-8 flex justify-between items-center border-t border-white/5 opacity-40 relative z-10">
                     <div className="text-[10px] font-mono text-white/40 tracking-tighter">SSH-2.0-OpenSSH_9.0_Cockpit</div>

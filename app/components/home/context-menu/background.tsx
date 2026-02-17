@@ -31,40 +31,40 @@ const backgroundImages = [
 export function BackgroundSelector({ isOpen, onClose, onChangeBackground, currentBackground }: BackgroundSelectorProps) {
   const [selectedImage, setSelectedImage] = useState(currentBackground);
   const [previewImage, setPreviewImage] = useState(currentBackground);
-  
+
   const currentIndex = backgroundImages.indexOf(selectedImage);
-  
+
   const handleNext = () => {
     const nextIndex = (currentIndex + 1) % backgroundImages.length;
     setSelectedImage(backgroundImages[nextIndex]);
     setPreviewImage(backgroundImages[nextIndex]);
   };
-  
+
   const handlePrev = () => {
     const prevIndex = (currentIndex - 1 + backgroundImages.length) % backgroundImages.length;
     setSelectedImage(backgroundImages[prevIndex]);
     setPreviewImage(backgroundImages[prevIndex]);
   };
-  
+
   const handleApply = () => {
     onChangeBackground(selectedImage);
     onClose();
   };
-  
+
   const handleCancel = () => {
     setPreviewImage(currentBackground);
     onClose();
   };
-  
+
   useEffect(() => {
     if (isOpen) {
       setSelectedImage(currentBackground);
       setPreviewImage(currentBackground);
     }
   }, [isOpen, currentBackground]);
-  
+
   if (!isOpen) return null;
-  
+
   return (
     <AnimatePresence>
       <motion.div
@@ -87,14 +87,14 @@ export function BackgroundSelector({ isOpen, onClose, onChangeBackground, curren
                 <Settings className="w-5 h-5 text-white" />
                 <h2 className="text-lg font-semibold text-white">Cockpit Background</h2>
               </div>
-              <button 
+              <button
                 onClick={handleCancel}
                 className="p-1.5 rounded-md hover:bg-white/10 text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="flex flex-1 overflow-hidden">
               {/* Preview Section - Hidden on mobile */}
               <div className="hidden md:flex md:w-1/2 p-4 flex-col">
@@ -108,16 +108,16 @@ export function BackgroundSelector({ isOpen, onClose, onChangeBackground, curren
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
                 </div>
-                
+
                 <div className="mt-4 flex gap-2">
-                  <button 
+                  <button
                     onClick={handlePrev}
                     className="flex-1 py-2 px-4 bg-white/5 hover:bg-white/10 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Previous
                   </button>
-                  <button 
+                  <button
                     onClick={handleNext}
                     className="flex-1 py-2 px-4 bg-white/5 hover:bg-white/10 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
                   >
@@ -125,21 +125,21 @@ export function BackgroundSelector({ isOpen, onClose, onChangeBackground, curren
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={handleApply}
                   className="mt-4 py-2.5 px-4 bg-blue-700 hover:bg-blue-700/80 text-white rounded-lg font-medium transition-colors"
                 >
                   Apply Changes
                 </button>
               </div>
-              
+
               {/* Thumbnails Section - Full width on mobile, half on desktop */}
               <div className="w-full md:w-1/2 p-4 md:border-l md:border-white/10 overflow-y-auto max-h-[calc(90vh-100px)]">
                 <h3 className="text-white font-medium mb-3">Choose a picture</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {backgroundImages.map((img, index) => (
-                    <div 
+                    <div
                       key={index}
                       className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedImage === img ? 'border-blue-500' : 'border-transparent'}`}
                       onClick={() => {
@@ -175,30 +175,30 @@ interface BackgroundChangerProps {
   onChangeBackground?: (imagePath: string) => void;
 }
 
-export function BackgroundChanger({ currentBackground = "/wallpaper/11.jpg", onChangeBackground }: BackgroundChangerProps) {
+export function BackgroundChanger({ currentBackground = "/wallpaper/28.jpg", onChangeBackground }: BackgroundChangerProps) {
   const [background, setBackground] = useState(currentBackground);
   const [showSelector, setShowSelector] = useState(false);
-  
+
   const handleChangeBackground = (newBackground: string) => {
     setBackground(newBackground);
     onChangeBackground?.(newBackground);
   };
-  
+
   useEffect(() => {
     const handleOpenSelector = () => {
       setShowSelector(true);
     };
-    
+
     document.addEventListener('openBackgroundSelector', handleOpenSelector);
-    
+
     return () => {
       document.removeEventListener('openBackgroundSelector', handleOpenSelector);
     };
   }, []);
-  
+
   return (
     <>
-      <motion.div 
+      <motion.div
         className="absolute inset-0 pointer-events-none"
         initial={false}
         animate={{ backgroundImage: `url('${background}')` }}
@@ -213,14 +213,14 @@ export function BackgroundChanger({ currentBackground = "/wallpaper/11.jpg", onC
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
       </motion.div>
-      
-      <BackgroundSelector 
-        isOpen={showSelector} 
-        onClose={() => setShowSelector(false)} 
+
+      <BackgroundSelector
+        isOpen={showSelector}
+        onClose={() => setShowSelector(false)}
         onChangeBackground={handleChangeBackground}
         currentBackground={background}
       />
-      
+
       {/* <button 
         onClick={() => setShowSelector(true)}
         className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-white/20 transition-colors z-[100] hidden md:block"

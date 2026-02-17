@@ -30,6 +30,7 @@ import { DesktopContextMenu } from "@/components/home/desktop-context-menu";
 import { BoosterWidget } from "@/components/home/widgets/booster-widget";
 
 export default function HomePage() {
+    const [isAuthenticated, setIsAuthenticated] = React.useState(false);
     const [isTerminalOpen, setIsTerminalOpen] = React.useState(false);
     const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number } | null>(null);
     const [focusedApp, setFocusedApp] = React.useState<string | null>(null);
@@ -67,12 +68,15 @@ export default function HomePage() {
         // Check authentication status
         const checkAuth = async () => {
             try {
-                const res = await fetch("http://localhost:9100/cockpit/vps", { credentials: "include" });
-                if (res.status === 401) {
-                    window.location.href = "/setup";
+                const res = await fetch("http://localhost:9100/auth/me", { credentials: "include" });
+                if (!res.ok) {
+                    window.location.href = "/";
+                } else {
+                    setIsAuthenticated(true);
                 }
             } catch (e) {
                 console.error("Auth check failed", e);
+                window.location.href = "/";
             }
         };
         checkAuth();
@@ -294,6 +298,10 @@ export default function HomePage() {
     const handleWallpaperChange = async (img: string) => {
         setBackgroundImage(img);
     };
+
+    if (!isAuthenticated) {
+        return <div className="min-h-screen w-full bg-black" />;
+    }
 
     return (
         <ZIndexProvider>

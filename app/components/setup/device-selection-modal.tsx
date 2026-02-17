@@ -23,7 +23,7 @@ export function DeviceSelectionModal({ devices, onSelect, onConfigureNew }: Devi
         <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="w-full max-w-[480px] bg-black/40 backdrop-blur-2xl rounded-[32px] p-8 border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.5)] flex flex-col"
+            className="w-full max-w-[480px] bg-black/30 border border-white/5 backdrop-blur-2xl rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.5)] flex flex-col"
         >
             <div className="mb-6 flex flex-col gap-2">
                 <h1 className="text-[24px] font-semibold text-white tracking-tight">Select Device</h1>
@@ -35,7 +35,7 @@ export function DeviceSelectionModal({ devices, onSelect, onConfigureNew }: Devi
                     <button
                         key={device.id}
                         onClick={() => onSelect(device)}
-                        className="group w-full p-4 bg-white/5 hover:bg-white/5 border border-white/0 hover:border-white/5 rounded-2xl flex items-center justify-between transition-all duration-200 text-left"
+                        className="group w-full p-4 bg-white/5 hover:bg-white/5 rounded-2xl flex items-center justify-between transition-all duration-200 text-left"
                     >
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-zinc-500/10 flex items-center justify-center group-hover:bg-zinc-500/20 transition-colors">
@@ -62,7 +62,7 @@ export function DeviceSelectionModal({ devices, onSelect, onConfigureNew }: Devi
 
             <button
                 onClick={onConfigureNew}
-                className="w-full h-13 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20"
+                className="w-full h-13 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 bg-white/5 text-white hover:bg-white/10"
             >
                 <Plus className="w-5 h-5 opacity-70" />
                 Configure New PC

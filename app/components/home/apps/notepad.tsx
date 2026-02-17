@@ -18,6 +18,7 @@ import {
     Underline,
     Loader2
 } from "lucide-react";
+import { WINDOW_CONSTANTS } from "../window-constants";
 
 interface NotepadProps {
     isOpen: boolean;
@@ -248,11 +249,14 @@ export function Notepad({ isOpen, onClose, onMinimize }: NotepadProps) {
         }
 
         setPreMaximizeState({ size, pos: { x: x.get(), y: y.get() } });
-        const availableW = window.innerWidth - 24;
-        const availableH = window.innerHeight - 32 - 130;
+        const { MENU_HEIGHT, DOCK_HEIGHT, HORIZONTAL_PADDING } = WINDOW_CONSTANTS;
+
+        const availableW = window.innerWidth - HORIZONTAL_PADDING * 2;
+        const availableH = window.innerHeight - MENU_HEIGHT - DOCK_HEIGHT;
+
         setSize({ width: availableW, height: availableH });
 
-        const targetY = 32 - window.innerHeight / 2 + availableH / 2;
+        const targetY = MENU_HEIGHT - window.innerHeight / 2 + availableH / 2;
 
         import("framer-motion").then(({ animate }) => {
             animate(x, 0, springConfig);

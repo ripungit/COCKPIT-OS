@@ -95,20 +95,18 @@ export function WeatherWidget() {
                 const weatherData = await weatherRes.json();
 
                 // Reverse geocode to get location name
-                const geoRes = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-                );
                 let locationName = "Your Location";
-                if (geoRes.ok) {
-                    const geoData = await geoRes.json();
-                    locationName = geoData.address?.city ||
-                        geoData.address?.town ||
-                        geoData.address?.village ||
-                        geoData.address?.county ||
-                        "Your Location";
-                    if (geoData.address?.state) {
-                        locationName += `, ${geoData.address.state}`;
+                try {
+                    // BigDataCloud is more CORS-friendly than Nominatim for client-side fetches
+                    const geoRes = await fetch(
+                        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+                    );
+                    if (geoRes.ok) {
+                        const geoData = await geoRes.json();
+                        locationName = geoData.city || geoData.locality || geoData.principalSubdivision || "Your Location";
                     }
+                } catch (geoError) {
+                    console.warn("Geocoding failed, using generic location name", geoError);
                 }
 
                 // Get current hour index

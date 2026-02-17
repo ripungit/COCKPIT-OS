@@ -7,7 +7,7 @@ import Image from "next/image";
 
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
-    const [signupStep, setSignupStep] = useState<1 | 2>(1);
+    const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
@@ -26,12 +26,14 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         email: "",
         username: "",
         userId: "", // Returned from step 1
+        otp: "",
         password: ""
     });
 
     const isLoginValid = loginData.username && loginData.password;
     const isSignupStep1Valid = signupData.firstName && signupData.lastName && signupData.email && signupData.username;
-    const isSignupStep2Valid = signupData.password && signupData.password.length >= 6;
+    const isSignupStep2Valid = signupData.otp && signupData.otp.length >= 4;
+    const isSignupStep3Valid = signupData.password && signupData.password.length >= 8;
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -95,6 +97,38 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         }
     };
 
+    const handleSignupVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const res = await fetch("http://localhost:9100/auth/signup/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: signupData.userId,
+                    otp: signupData.otp
+                }),
+                credentials: "include"
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.ok) {
+                setSignupStep(3);
+                setSuccess("Email verified successfully");
+            } else {
+                setError(data.message || "Invalid OTP code");
+            }
+        } catch (err) {
+            setError("Failed to verify OTP");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSignupFinish = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -119,7 +153,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                 setMode('login');
                 setSuccess("Account created successfully. Please sign in.");
                 setSignupStep(1);
-                setSignupData(prev => ({ ...prev, password: "", userId: "" }));
+                setSignupData(prev => ({ ...prev, password: "", userId: "", otp: "" }));
             } else {
                 setError(data.message || "Failed to set password");
             }
@@ -137,11 +171,18 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSignupStep(1);
     }
 
+    const onSubmit = (e: React.FormEvent) => {
+        if (mode === 'login') return handleLogin(e);
+        if (signupStep === 1) return handleSignupStart(e);
+        if (signupStep === 2) return handleSignupVerify(e);
+        return handleSignupFinish(e);
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="w-full max-w-[440px] bg-black/40 backdrop-blur-2xl rounded-[32px] p-10 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.5)] flex flex-col items-center"
+            className="w-full max-w-[440px] bg-black/40 backdrop-blur-2xl rounded-[32px] p-10 border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.5)] flex flex-col items-center"
         >
             <div className="mb-8 flex flex-col items-center gap-4">
                 <div className="w-16 h-16 relative">
@@ -161,7 +202,9 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                             ? "Use your cockpit account to continue"
                             : signupStep === 1
                                 ? "Enter your details to get started"
-                                : "Choose a secure password"}
+                                : signupStep === 2
+                                    ? "Verify your email address"
+                                    : "Choose a secure password"}
                     </p>
                 </div>
             </div>
@@ -259,7 +302,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        onSubmit={signupStep === 1 ? handleSignupStart : handleSignupFinish}
+                        onSubmit={onSubmit}
                         className="w-full space-y-5"
                     >
                         {signupStep === 1 ? (
@@ -270,7 +313,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                         <input
                                             type="text"
                                             placeholder="First Name"
-                                            className="w-full h-13 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all invalid:border-red-500/50"
+                                            className="w-full h-13 bg-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all invalid:border-red-500/50"
                                             value={signupData.firstName}
                                             onChange={(e) => setSignupData({ ...signupData, firstName: e.target.value })}
                                         />
@@ -279,7 +322,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                         <input
                                             type="text"
                                             placeholder="Last Name"
-                                            className="w-full h-13 bg-white/5 border border-white/5 rounded-2xl pl-4 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
+                                            className="w-full h-13 bg-white/5 rounded-2xl pl-4 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
                                             value={signupData.lastName}
                                             onChange={(e) => setSignupData({ ...signupData, lastName: e.target.value })}
                                         />
@@ -291,7 +334,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                     <input
                                         type="email"
                                         placeholder="Email Address"
-                                        className="w-full h-13 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
+                                        className="w-full h-13 bg-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
                                         value={signupData.email}
                                         onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
                                     />
@@ -303,10 +346,52 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                         type="text"
                                         placeholder="Username"
                                         autoComplete="off"
-                                        className="w-full h-13 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
+                                        className="w-full h-13 bg-white/5 rounded-2xl pl-12 pr-4 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
                                         value={signupData.username}
                                         onChange={(e) => setSignupData({ ...signupData, username: e.target.value })}
                                     />
+                                </div>
+                            </div>
+                        ) : signupStep === 2 ? (
+                            <div className="space-y-6">
+                                <p className="text-white/60 text-sm text-center px-4">
+                                    We sent a 4-digit verification code to <span className="text-white font-medium">{signupData.email}</span>
+                                </p>
+                                <div className="flex justify-center gap-3">
+                                    {[0, 1, 2, 3].map((index) => (
+                                        <input
+                                            key={index}
+                                            id={`otp-${index}`}
+                                            type="text"
+                                            maxLength={1}
+                                            className="w-14 h-16 bg-white/5 rounded-2xl text-center text-2xl font-bold text-white outline-none focus:bg-white/10 transition-all"
+                                            value={signupData.otp[index] || ""}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase().slice(0, 1);
+                                                const currentOtp = signupData.otp.split('');
+                                                while (currentOtp.length < 4) currentOtp.push('');
+                                                currentOtp[index] = val;
+                                                const newOtp = currentOtp.join('').slice(0, 4);
+                                                setSignupData({ ...signupData, otp: newOtp });
+
+                                                if (val && index < 3) {
+                                                    const nextInput = document.getElementById(`otp-${index + 1}`);
+                                                    nextInput?.focus();
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Backspace' && !signupData.otp[index] && index > 0) {
+                                                    const prevInput = document.getElementById(`otp-${index - 1}`);
+                                                    prevInput?.focus();
+                                                }
+                                            }}
+                                            onPaste={(e) => {
+                                                e.preventDefault();
+                                                const pastedData = e.clipboardData.getData('text').toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 4);
+                                                setSignupData({ ...signupData, otp: pastedData });
+                                            }}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         ) : (
@@ -317,7 +402,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                         type={showPassword ? "text" : "password"}
                                         placeholder="Create Password"
                                         autoComplete="new-password"
-                                        className="w-full h-13 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-12 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
+                                        className="w-full h-13 bg-white/5 rounded-2xl pl-12 pr-12 text-white placeholder:text-white/30 outline-none focus:ring-0 focus:ring-white/20 transition-all"
                                         value={signupData.password}
                                         onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                                     />
@@ -334,7 +419,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                     </button>
                                 </div>
                                 <div className="text-white/40 text-[13px] text-center">
-                                    Password must be at least 6 characters
+                                    Password must be at least 8 characters
                                 </div>
                             </div>
                         )}
@@ -352,8 +437,8 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
                         <button
                             type="submit"
-                            disabled={!((signupStep === 1 && isSignupStep1Valid) || (signupStep === 2 && isSignupStep2Valid)) || isLoading}
-                            className={`w-full h-13 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${((signupStep === 1 && isSignupStep1Valid) || (signupStep === 2 && isSignupStep2Valid)) && !isLoading
+                            disabled={!((signupStep === 1 && isSignupStep1Valid) || (signupStep === 2 && isSignupStep2Valid) || (signupStep === 3 && isSignupStep3Valid)) || isLoading}
+                            className={`w-full h-13 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${((signupStep === 1 && isSignupStep1Valid) || (signupStep === 2 && isSignupStep2Valid) || (signupStep === 3 && isSignupStep3Valid)) && !isLoading
                                 ? "bg-white text-black hover:bg-white/90 shadow-lg shadow-white/10 active:scale-[0.98]"
                                 : "bg-white/10 text-white/30 cursor-not-allowed"
                                 }`}
@@ -362,7 +447,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                                 <Loader2 className="w-5 h-5 animate-spin text-white/50" />
                             ) : (
                                 <>
-                                    {signupStep === 1 ? "Start Signup" : "Create Account"}
+                                    {signupStep === 1 ? "Start Signup" : signupStep === 2 ? "Verify OTP" : "Create Account"}
                                     <ChevronRight className="w-5 h-5" />
                                 </>
                             )}
@@ -384,6 +469,6 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                     )}
                 </button>
             </div>
-        </motion.div>
+        </motion.div >
     );
 }

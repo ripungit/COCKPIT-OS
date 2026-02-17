@@ -221,8 +221,8 @@ export function DesktopContextMenu({ x, y, onClose, activeApps }: DesktopContext
         ],
       },
       { label: "", icon: () => null, divider: true },
-      { label: "Restart...", icon: RotateCcw, action: () => window.location.reload() },
-      { label: "Shut Down...", icon: Power, action: () => window.location.href = '/setup' },
+      { label: "Refresh", icon: RotateCcw, action: () => window.location.reload() },
+      { label: "Shut Down", icon: Power, action: () => window.location.href = '/setup' },
     ],
     [activeApps]
   );
