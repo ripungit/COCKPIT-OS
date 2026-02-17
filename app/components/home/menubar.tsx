@@ -166,7 +166,7 @@ export function Menubar({
             const { hostname, protocol } = window.location;
             return `${protocol}//${hostname}:9100`;
         }
-        return "http://localhost:9100";
+        return "https://cognode.ripun.site";
     };
 
     const getBatteryIcon = () => {

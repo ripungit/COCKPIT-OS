@@ -15,7 +15,7 @@ function getBaseUrl() {
         const { hostname, protocol } = window.location;
         return `${protocol}//${hostname}:9100`;
     }
-    return "http://localhost:9100";
+    return "https://cognode.ripun.site";
 }
 
 export function NoteWidget({ onClick }: NoteWidgetProps) {

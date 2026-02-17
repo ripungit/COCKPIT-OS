@@ -7,7 +7,7 @@ import { getNewZIndex } from "@/lib/z-index-manager";
 import "@xterm/xterm/css/xterm.css";
 
 import { WINDOW_CONSTANTS } from "../window-constants";
-const BASE_URL = "http://localhost:9100";
+const BASE_URL = "https://cognode.ripun.site";
 
 interface TerminalProps {
     isOpen: boolean;

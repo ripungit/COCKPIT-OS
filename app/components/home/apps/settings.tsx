@@ -111,10 +111,10 @@ export function Settings({ isOpen, onClose, onMinimize }: SettingsProps) {
         if (typeof window !== 'undefined') {
             const host = window.location.hostname;
             if (host === 'localhost' || host === '127.0.0.1') {
-                return 'http://localhost:9100';
+                return 'https://cognode.ripun.site';
             }
         }
-        return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9100';
+        return process.env.NEXT_PUBLIC_API_BASE_URL || 'https://cognode.ripun.site';
     };
 
     const [device, setDevice] = useState<any>(null);

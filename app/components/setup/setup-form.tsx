@@ -65,7 +65,7 @@ export function SetupForm() {
             const term = new Terminal();
             termRef.current = term;
 
-            const res = await fetch(`http://localhost:9100/cockpit/vps/${vpsId}/terminal/sessions`, {
+            const res = await fetch(`https://cognode.ripun.site/cockpit/vps/${vpsId}/terminal/sessions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -154,7 +154,7 @@ export function SetupForm() {
             setLogs([]);
 
             // Step 1: Create VPS
-            const vpsRes = await fetch("http://localhost:9100/cockpit/vps", {
+            const vpsRes = await fetch("https://cognode.ripun.site/cockpit/vps", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -173,7 +173,7 @@ export function SetupForm() {
 
             // Step 2: Verify
             setStatus('verifying');
-            const verifyRes = await fetch(`http://localhost:9100/cockpit/vps/${vpsId}/verify`, {
+            const verifyRes = await fetch(`https://cognode.ripun.site/cockpit/vps/${vpsId}/verify`, {
                 method: "POST",
                 credentials: "include"
             });
@@ -194,7 +194,7 @@ export function SetupForm() {
 
             // Step 3: Enroll
             setStatus('enrolling');
-            const enrollRes = await fetch(`http://localhost:9100/cockpit/cocktail/devices/enroll/start`, {
+            const enrollRes = await fetch(`https://cognode.ripun.site/cockpit/cocktail/devices/enroll/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ vpsId }),

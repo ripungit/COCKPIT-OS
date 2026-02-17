@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/user/:path*",
-        destination: "http://localhost:9100/:path*",
+        destination: "https://cognode.ripun.site/:path*",
       },
     ];
   },

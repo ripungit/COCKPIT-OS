@@ -130,7 +130,7 @@ function getBaseUrl() {
     }
 
     // 3) Fallback
-    return "http://localhost:9100";
+    return "https://cognode.ripun.site";
 }
 
 function normalizeMetrics(raw: any): NormalizedMetrics {
@@ -205,7 +205,7 @@ function useDeviceStreamWs(deviceId: string | null, enabled: boolean) {
     const getBaseUrl = () => {
         if (typeof window !== "undefined") {
             const url = window.location.origin;
-            return url.includes("localhost") ? "http://localhost:9100" : url;
+            return url.includes("localhost") ? "https://cognode.ripun.site" : url;
         }
         return "";
     };
