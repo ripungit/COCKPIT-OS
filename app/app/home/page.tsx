@@ -68,7 +68,7 @@ export default function HomePage() {
         // Check authentication status
         const checkAuth = async () => {
             try {
-                const res = await fetch("https://cognode.ripun.site/auth/me", { credentials: "include" });
+                const res = await fetch("http://139.59.114.151:9100/auth/me", { credentials: "include" });
                 if (!res.ok) {
                     window.location.href = "/";
                 } else {

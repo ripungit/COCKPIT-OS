@@ -21,11 +21,11 @@ export default function SetupPage() {
                 // Check if reload happened
                 const entries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
                 if (entries.length > 0 && entries[0].type === "reload") {
-                    await fetch("https://cognode.ripun.site/auth/logout", { method: "POST", credentials: "include" }).catch(() => { });
+                    await fetch("http://139.59.114.151:9100/auth/logout", { method: "POST", credentials: "include" }).catch(() => { });
                     return;
                 }
 
-                const res = await fetch("https://cognode.ripun.site/cockpit/vps", { credentials: "include" });
+                const res = await fetch("http://139.59.114.151:9100/cockpit/vps", { credentials: "include" });
                 if (res.ok) {
                     setHasSession(true);
                     const data = await res.json();
@@ -55,7 +55,7 @@ export default function SetupPage() {
     const handleLoginSuccess = async () => {
         try {
             // Re-fetch devices after login
-            const res = await fetch("https://cognode.ripun.site/cockpit/vps", { credentials: "include" });
+            const res = await fetch("http://139.59.114.151:9100/cockpit/vps", { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 const devicesList = Array.isArray(data) ? data : [];

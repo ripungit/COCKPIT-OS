@@ -141,7 +141,7 @@ export class CocktailService {
         });
 
         // 4. Return
-        const serverUrl = process.env.API_PUBLIC_URL || 'https://cognode.ripun.site';
+        const serverUrl = process.env.API_PUBLIC_URL || 'http://139.59.114.151:9100';
         return {
             deviceId: device.id,
             enrollmentToken: tokenRaw,

@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { randomBytes } from 'crypto';
 
-const API_BASE_URL = 'https://cognode.ripun.site';
-const TOTAL_ACCOUNTS = 2000;
-const BATCH_SIZE = 2000; // Process all at once to stress test concurrency
+const API_BASE_URL = 'http://139.59.114.151:9100';
+const TOTAL_ACCOUNTS = 20;
+const BATCH_SIZE = 20; // Process all at once to stress test concurrency
 
 interface CreateAccountResult {
     index: number;

@@ -23,7 +23,7 @@ export function BoosterWidget({ onClick }: BoosterWidgetProps) {
             const { hostname, protocol } = window.location;
             return `${protocol}//${hostname}:9100`;
         }
-        return "https://cognode.ripun.site";
+        return "http://139.59.114.151:9100";
     };
 
     const startCleaning = async () => {

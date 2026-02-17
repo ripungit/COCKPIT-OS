@@ -56,13 +56,15 @@ export function listConnections(): any[] {
         let out = "";
         let isSs = false;
         try {
-            // Try ss first (preferred). Remove -H to see if it's the issue, or use it safely.
-            out = execSync("ss -tanp || ss -tunp", { encoding: "utf-8", shell: "/bin/bash", stdio: ["ignore", "pipe", "ignore"] });
+            // Try ss first (preferred).
+            // Explicitly try /usr/sbin/ss or /sbin/ss if simply 'ss' fails, as PATH issues can occur in some cron/systemd contexts
+            const ssCmd = "ss -tanp || ss -tunp || /usr/sbin/ss -tanp || /sbin/ss -tanp";
+            out = execSync(ssCmd, { encoding: "utf-8", shell: "/bin/bash", stdio: ["ignore", "pipe", "ignore"] });
             isSs = true;
         } catch {
             try {
                 // Fallback to netstat
-                out = execSync("netstat -tunap", { encoding: "utf-8", shell: "/bin/bash", stdio: ["ignore", "pipe", "ignore"] });
+                out = execSync("netstat -tunap || /usr/sbin/netstat -tunap", { encoding: "utf-8", shell: "/bin/bash", stdio: ["ignore", "pipe", "ignore"] });
                 isSs = false;
             } catch {
                 return [];
@@ -122,6 +124,7 @@ export class AgentStreamClient {
     private ws: WebSocket | null = null;
     private alive = false;
     private logs = new Map<string, LogProc>();
+    public onReady?: () => void;
 
     constructor(private serverUrl: string, private deviceId: string, private token: string) { }
 
@@ -140,6 +143,9 @@ export class AgentStreamClient {
             if (!msg) return;
             if (msg.t === "log_start") this.handleLogStart(msg);
             if (msg.t === "log_stop") this.handleLogStop(msg.streamId);
+            if (msg.t === "ok" && msg.for === "hello") {
+                if (this.onReady) this.onReady();
+            }
         });
 
         this.ws.on("close", () => {
@@ -246,10 +252,23 @@ export class CocktailAgent {
     async start() {
         console.log(`Starting Cocktail Agent for device ${this.config.deviceId}...`);
 
-        if (this.stream) this.stream.start();
+        if (this.stream) {
+            this.stream.onReady = () => {
+                // Push immediate update when server acknowledges connection
+                console.log(`[CocktailAgent] Stream authenticated for ${this.config.deviceId}. Pushing initial core metrics...`);
+                try {
+                    const metrics = this.collectMetrics();
+                    this.stream?.pushMetrics(metrics);
+                    this.stream?.pushConns(listConnections());
+                } catch (e) {
+                    console.error("Failed to push initial data", e);
+                }
+            };
+            this.stream.start();
+        }
 
         // Install dependencies
-        await this.installNeofetch();
+        await this.installFetchTools();
 
         // Prime diff-based metrics
         this.getCpuUsage();
@@ -975,36 +994,102 @@ export class CocktailAgent {
 
     private lastNeofetch: { output: string; ts: number } | null = null;
 
-    private async installNeofetch() {
+    private async installFetchTools() {
         if (os.platform() !== "linux") return;
-        try {
-            execSync("which neofetch", { stdio: "ignore" });
-        } catch {
-            console.log("[CocktailAgent] Installing neofetch...");
+
+        const tools = ["fastfetch", "screenfetch", "neofetch"];
+        let hasAny = false;
+        for (const tool of tools) {
             try {
-                // Try apt-get first
-                execSync("sudo apt-get update && sudo apt-get install -y neofetch", { stdio: "ignore" });
-                console.log("[CocktailAgent] neofetch installed via apt.");
-            } catch (e) {
-                console.error("[CocktailAgent] Failed to install neofetch:", e);
+                execSync(`which ${tool}`, { stdio: "ignore" });
+                hasAny = true;
+                break;
+            } catch { }
+        }
+
+        if (!hasAny) {
+            console.log("[CocktailAgent] No fetch tools found. Attempting to install...");
+            const commands = [
+                "sudo apt-get update && sudo apt-get install -y fastfetch || sudo apt-get install -y screenfetch || sudo apt-get install -y neofetch",
+                "sudo dnf install -y fastfetch || sudo dnf install -y screenfetch || sudo dnf install -y neofetch",
+                "sudo yum install -y fastfetch || sudo yum install -y screenfetch || sudo yum install -y neofetch",
+                "sudo pacman -S --noconfirm fastfetch || sudo pacman -S --noconfirm screenfetch || sudo pacman -S --noconfirm neofetch",
+                "sudo apk add fastfetch || sudo apk add screenfetch || sudo apk add neofetch",
+                "sudo zypper install -y fastfetch || sudo zypper install -y screenfetch || sudo zypper install -y neofetch"
+            ];
+
+            for (const cmd of commands) {
+                try {
+                    execSync(cmd, { stdio: "ignore", shell: "/bin/bash" });
+                    console.log("[CocktailAgent] Fetch tool installed successfully.");
+                    break;
+                } catch { }
             }
         }
     }
 
-    private getNeofetch(): string {
+    private getSystemFetch(): string {
         try {
-            if (os.platform() !== "linux") return "Neofetch only supported on Linux";
+            if (os.platform() !== "linux") return "System fetch only supported on Linux";
 
             const now = Date.now();
             if (this.lastNeofetch && (now - this.lastNeofetch.ts) < 120000) {
                 return this.lastNeofetch.output;
             }
 
-            const output = execSync("neofetch --stdout", { encoding: "utf-8", shell: "/bin/bash" });
-            this.lastNeofetch = { output, ts: now };
-            return output;
+            // Expanded paths for distributions like Kali, Alpine, etc.
+            const commonPaths = ["/usr/bin", "/usr/local/bin", "/usr/games", "/bin", "/usr/sbin", "/sbin", "/usr/local/games"];
+            const envPath = [...commonPaths, process.env.PATH].filter(Boolean).join(':');
+
+            const tools = [
+                { exe: "fastfetch", args: "--pipe" },
+                { exe: "neofetch", args: "--stdout" },
+                { exe: "screenfetch", args: "-N" }
+            ];
+
+            let output = "";
+            let lastError = "";
+
+            for (const tool of tools) {
+                // Try executing within a bash login shell to get full environment
+                try {
+                    const cmd = `PATH="${envPath}" bash -c "which ${tool.exe} && ${tool.exe} ${tool.args}"`;
+                    output = execSync(cmd, {
+                        encoding: "utf-8",
+                        shell: "/bin/bash",
+                        timeout: 8000,
+                        env: { ...process.env, PATH: envPath }
+                    });
+                    if (output && output.trim()) break;
+                } catch (e: any) {
+                    lastError = e.message;
+                }
+
+                // Try absolute paths directly
+                for (const p of commonPaths) {
+                    try {
+                        const absPath = `${p}/${tool.exe}`;
+                        output = execSync(`${absPath} ${tool.args}`, {
+                            encoding: "utf-8",
+                            timeout: 5000,
+                            env: { ...process.env, PATH: envPath }
+                        });
+                        if (output && output.trim()) break;
+                    } catch { }
+                }
+                if (output) break;
+            }
+
+            if (!output.trim()) {
+                throw new Error(`No fetch tool available. Checked: neofetch, fastfetch, screenfetch. PATH: ${envPath}`);
+            }
+
+            // Strip any remaining ANSI escape codes before caching
+            const cleanOutput = output.replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '');
+            this.lastNeofetch = { output: cleanOutput, ts: now };
+            return cleanOutput;
         } catch (e) {
-            return "Neofetch failed: " + (e as any).message;
+            return "System fetch failed: " + (e as any).message;
         }
     }
 
@@ -1015,7 +1100,7 @@ export class CocktailAgent {
         const freeMem = os.freemem();
         const usedMem = totalMem - freeMem;
         const netSpeed = this.getNetworkUsage();
-        const neofetch = this.getNeofetch();
+        const neofetch = this.getSystemFetch();
 
         const diskInfo: any[] = [];
         try {

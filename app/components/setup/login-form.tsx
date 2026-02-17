@@ -42,7 +42,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("https://cognode.ripun.site/auth/login/password", {
+            const res = await fetch("http://139.59.114.151:9100/auth/login/password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(loginData),
@@ -70,7 +70,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("https://cognode.ripun.site/auth/signup/start", {
+            const res = await fetch("http://139.59.114.151:9100/auth/signup/start", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -104,7 +104,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("https://cognode.ripun.site/auth/signup/verify", {
+            const res = await fetch("http://139.59.114.151:9100/auth/signup/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -136,7 +136,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         setSuccess("");
 
         try {
-            const res = await fetch("https://cognode.ripun.site/auth/signup/password", {
+            const res = await fetch("http://139.59.114.151:9100/auth/signup/password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

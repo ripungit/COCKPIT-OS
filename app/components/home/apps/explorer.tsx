@@ -53,7 +53,7 @@ interface FileSystemItem {
     size?: number; // Added for remote file system
 }
 
-const BASE_URL = "https://cognode.ripun.site";
+const BASE_URL = "http://139.59.114.151:9100";
 
 // --- HOOK ---
 // Simplified hook to manage remote file system

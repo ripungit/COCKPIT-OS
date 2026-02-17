@@ -47,7 +47,7 @@ interface GalleryProps {
 
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
-const BASE_URL = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || "https://cognode.ripun.site") : "https://cognode.ripun.site";
+const BASE_URL = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || "http://139.59.114.151:9100") : "http://139.59.114.151:9100";
 
 interface RemoteImage {
     name: string;
