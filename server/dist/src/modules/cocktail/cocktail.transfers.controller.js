@@ -94,7 +94,7 @@ let CocktailTransfersController = class CocktailTransfersController {
         await db.update(schema_1.cocktailTransfers)
             .set({ sizeBytes: finalSize, status: 'done' })
             .where((0, drizzle_orm_1.eq)(schema_1.cocktailTransfers.id, transferId));
-        const serverUrl = process.env.API_PUBLIC_URL || 'http://localhost:9100';
+        const serverUrl = process.env.API_PUBLIC_URL || 'https://cognode.ripun.site';
         await this.cocktailService.createTask(req.user.id, transfer.deviceId, 'fs.pull_from_server', {
             transferId: transfer.id,
             path: transfer.path,

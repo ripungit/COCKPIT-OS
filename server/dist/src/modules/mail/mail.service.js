@@ -1,80 +1,91 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+var MailService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MailService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
-const nodemailer = __importStar(require("nodemailer"));
-let MailService = class MailService {
+const axios_1 = __importDefault(require("axios"));
+let MailService = MailService_1 = class MailService {
     constructor(configService) {
         this.configService = configService;
-        this.transporter = nodemailer.createTransport({
-            host: this.configService.get('SMTP_HOST'),
-            port: this.configService.get('SMTP_PORT', 465),
-            secure: this.configService.get('SMTP_SECURE', true),
-            auth: {
-                user: this.configService.get('SMTP_USER'),
-                pass: this.configService.get('SMTP_PASS'),
-            },
-        });
-        this.transporter.verify((error, success) => {
-            if (error) {
-                console.error('❌ SMTP Connection Error:', error);
+        this.logger = new common_1.Logger(MailService_1.name);
+        this.accessToken = null;
+        this.tokenExpiry = null;
+    }
+    async getAccessToken() {
+        if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+            return this.accessToken;
+        }
+        const region = this.configService.get('ZOHO_REGION', 'in');
+        const clientId = this.configService.get('ZOHO_CLIENT_ID');
+        const clientSecret = this.configService.get('ZOHO_CLIENT_SECRET');
+        const refreshToken = this.configService.get('ZOHO_REFRESH_TOKEN');
+        if (!clientId || !clientSecret || !refreshToken) {
+            throw new Error('Zoho Mail API credentials are not fully configured.');
+        }
+        const tokenUrl = `https://accounts.zoho.${region}/oauth/v2/token`;
+        try {
+            const params = new URLSearchParams();
+            params.append('refresh_token', refreshToken);
+            params.append('client_id', clientId);
+            params.append('client_secret', clientSecret);
+            params.append('grant_type', 'refresh_token');
+            const response = await axios_1.default.post(tokenUrl, params);
+            if (response.data.error) {
+                throw new Error(`Zoho Token Error: ${JSON.stringify(response.data)}`);
             }
-            else {
-                console.log('✅ SMTP Server is ready to take our messages');
+            this.accessToken = response.data.access_token;
+            if (!this.accessToken) {
+                throw new Error('No access token received from Zoho');
             }
-        });
+            this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+            return this.accessToken;
+        }
+        catch (error) {
+            this.logger.error('Failed to refresh Zoho access token', error);
+            throw error;
+        }
     }
     async sendMail(to, subject, html) {
         const from = this.configService.get('FROM_EMAIL');
-        await this.transporter.sendMail({
-            from: `"CockpitOS" <${from}>`,
-            to,
-            subject,
-            html,
-        });
+        const accountId = this.configService.get('ZOHO_ACCOUNT_ID');
+        const region = this.configService.get('ZOHO_REGION', 'in');
+        if (!accountId) {
+            throw new Error('ZOHO_ACCOUNT_ID is not configured.');
+        }
+        try {
+            const token = await this.getAccessToken();
+            const mailUrl = `https://mail.zoho.${region}/api/accounts/${accountId}/messages`;
+            const body = {
+                fromAddress: from,
+                toAddress: to,
+                subject: subject,
+                content: html,
+            };
+            await axios_1.default.post(mailUrl, body, {
+                headers: {
+                    Authorization: `Zoho-oauthtoken ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            this.logger.log(`📧 Email sent successfully to ${to}`);
+        }
+        catch (error) {
+            this.logger.error(`❌ Failed to send email to ${to}`, error.response?.data || error.message);
+            throw error;
+        }
     }
     async sendOtpEmail(to, otp) {
         const subject = 'Verify your email for CockpitOS';
@@ -131,7 +142,7 @@ let MailService = class MailService {
     }
 };
 exports.MailService = MailService;
-exports.MailService = MailService = __decorate([
+exports.MailService = MailService = MailService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService])
 ], MailService);

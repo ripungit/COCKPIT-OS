@@ -1,45 +1,98 @@
-
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import axios from 'axios';
 
 @Injectable()
 export class MailService {
-    private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(MailService.name);
+  private accessToken: string | null = null;
+  private tokenExpiry: number | null = null;
 
-    constructor(private readonly configService: ConfigService) {
-        this.transporter = nodemailer.createTransport({
-            host: this.configService.get<string>('SMTP_HOST'),
-            port: this.configService.get<number>('SMTP_PORT', 465),
-            secure: this.configService.get<boolean>('SMTP_SECURE', true),
-            auth: {
-                user: this.configService.get<string>('SMTP_USER'),
-                pass: this.configService.get<string>('SMTP_PASS'),
-            },
-        });
+  constructor(private readonly configService: ConfigService) { }
 
-        this.transporter.verify((error, success) => {
-            if (error) {
-                console.error('❌ SMTP Connection Error:', error);
-            } else {
-                console.log('✅ SMTP Server is ready to take our messages');
-            }
-        });
+  private async getAccessToken(): Promise<string> {
+    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.accessToken;
     }
 
-    async sendMail(to: string, subject: string, html: string) {
-        const from = this.configService.get<string>('FROM_EMAIL');
-        await this.transporter.sendMail({
-            from: `"CockpitOS" <${from}>`,
-            to,
-            subject,
-            html,
-        });
+    const region = this.configService.get<string>('ZOHO_REGION', 'in');
+    const clientId = this.configService.get<string>('ZOHO_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('ZOHO_CLIENT_SECRET');
+    const refreshToken = this.configService.get<string>('ZOHO_REFRESH_TOKEN');
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error('Zoho Mail API credentials are not fully configured.');
     }
 
-    async sendOtpEmail(to: string, otp: string) {
-        const subject = 'Verify your email for CockpitOS';
-        const html = `
+    const tokenUrl = `https://accounts.zoho.${region}/oauth/v2/token`;
+
+    try {
+      const params = new URLSearchParams();
+      params.append('refresh_token', refreshToken);
+      params.append('client_id', clientId);
+      params.append('client_secret', clientSecret);
+      params.append('grant_type', 'refresh_token');
+
+      const response = await axios.post(tokenUrl, params);
+
+      if (response.data.error) {
+        throw new Error(`Zoho Token Error: ${JSON.stringify(response.data)}`);
+      }
+
+      this.accessToken = response.data.access_token;
+
+      if (!this.accessToken) {
+        throw new Error('No access token received from Zoho');
+      }
+
+      // Token usually expires in 3600 seconds (1 hour). Set expiry to 55 minutes to be safe.
+      this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+
+      return this.accessToken;
+    } catch (error) {
+      this.logger.error('Failed to refresh Zoho access token', error);
+      throw error;
+    }
+  }
+
+  async sendMail(to: string, subject: string, html: string) {
+    const from = this.configService.get<string>('FROM_EMAIL');
+    const accountId = this.configService.get<string>('ZOHO_ACCOUNT_ID');
+    const region = this.configService.get<string>('ZOHO_REGION', 'in');
+
+    if (!accountId) {
+      throw new Error('ZOHO_ACCOUNT_ID is not configured.');
+    }
+
+    try {
+      const token = await this.getAccessToken();
+      const mailUrl = `https://mail.zoho.${region}/api/accounts/${accountId}/messages`;
+
+      const body = {
+        fromAddress: from,
+        toAddress: to,
+        subject: subject,
+        content: html,
+        // askReceipt: "yes" // Optional
+      };
+
+      await axios.post(mailUrl, body, {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      this.logger.log(`📧 Email sent successfully to ${to}`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to send email to ${to}`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async sendOtpEmail(to: string, otp: string) {
+    const subject = 'Verify your email for CockpitOS';
+    const html = `
 <div style="margin:0; padding:0; background-color:#ffffff;">
   <div style="max-width:520px; margin:40px auto; padding:0 16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1a1a1a;">
     
@@ -89,6 +142,6 @@ export class MailService {
 </div>
 `;
 
-        await this.sendMail(to, subject, html);
-    }
+    await this.sendMail(to, subject, html);
+  }
 }

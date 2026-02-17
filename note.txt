@@ -1,0 +1,1 @@
+https://accounts.zoho.in/oauth/v2/auth?scope=ZohoMail.messages.CREATE&client_id=1000.226Z38O64YERVR1MZ5AREYZHA4W5JW&response_type=code&access_type=offline&redirect_uri=https://cognode.ripun.site/zoho/callback

@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const crypto_1 = require("crypto");
-const API_BASE_URL = 'http://localhost:9100';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:9100';
 const TOTAL_ACCOUNTS = 20;
 const BATCH_SIZE = 20;
 function generateUniqueUser(index) {

@@ -28,7 +28,12 @@ async function bootstrap() {
     app.use((0, helmet_1.default)());
     app.use((0, cookie_parser_1.default)());
     app.enableCors({
-        origin: true,
+        origin: [
+            corsOrigin,
+            'https://cockpit.ripun.site',
+            'https://cognode.ripun.site',
+            'http://localhost:3000',
+        ],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'x-csrf-token', 'Authorization'],
