@@ -38,7 +38,12 @@ async function bootstrap() {
 
     // CORS with credentials
     app.enableCors({
-        origin: true,
+        origin: [
+            corsOrigin, // Allow origin from env
+            'https://cockpit.ripun.site',
+            'https://cognode.ripun.site',
+            'http://localhost:3000',
+        ],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'x-csrf-token', 'Authorization'],

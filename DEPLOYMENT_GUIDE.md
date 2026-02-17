@@ -86,14 +86,52 @@ ssh root@YOUR_VPS_IP
     sudo apt install certbot python3-certbot-nginx -y
     ```
 
+6.  **Install PostgreSQL**
+    ```bash
+    sudo apt install postgresql postgresql-contrib -y
+    sudo systemctl start postgresql
+    sudo systemctl enable postgresql
+    ```
+
+7.  **Configure PostgreSQL Database**
+    Switch to the postgres user:
+    ```bash
+    sudo -i -u postgres
+    ```
+    Enter the PostgreSQL shell:
+    ```bash
+    psql
+    ```
+    Create database and user (replace `your_password` with a strong password):
+    ```sql
+    CREATE DATABASE cockpit_db;
+    CREATE USER ripun WITH ENCRYPTED PASSWORD 'Ripun@781320';
+    GRANT ALL PRIVILEGES ON DATABASE cockpit_db TO ripun;
+    \q
+    ```
+    Exit the postgres user shell:
+    ```bash
+    exit
+    ```
+    **Note:** Your `DATABASE_URL` in the server `.env` will look like:
+    `postgres://cockpit_user:your_password@localhost:5432/cockpit_db`
+
 ---
 
 ## Part 3: Deploy the Backend (Server)
 
-1.  **Clone the Repository**
+1.  **Configure GitHub SSH Key**
+    Generate a new SSH key:
+    ```bash
+    ssh-keygen -t ed25519 -C "your_email@example.com"
+    cat ~/.ssh/id_ed25519.pub
+    ```
+    Copy the output (the public key) and add it to your GitHub account settings under **SSH and GPG keys**.
+
+2.  **Clone the Repository**
     ```bash
     cd /var/www
-    git clone https://github.com/YOUR_USERNAME/cockpit-os.git
+    git clone git@github.com:YOUR_USERNAME/cockpit-os.git
     cd cockpit-os/server
     ```
 
@@ -122,7 +160,7 @@ ssh root@YOUR_VPS_IP
 
 5.  **Start with PM2**
     ```bash
-    pm2 start dist/main.js --name "cockpit-server"
+    pm2 start dist/src/main.js --name "cognode"
     ```
 
 ---
@@ -165,6 +203,44 @@ ssh root@YOUR_VPS_IP
     pm2 save
     pm2 startup
     ```
+
+
+Step‑by‑step
+From your shell, enter Postgres as the superuser:
+
+bash
+sudo -u postgres psql
+Inside the psql prompt, connect to your database:
+
+sql
+\c cockpit_db
+You should see:
+
+Code
+You are now connected to database "cockpit_db" as user "postgres".
+Now run the ownership and grants (no sudo here, just SQL):
+
+sql
+ALTER SCHEMA public OWNER TO ripun;
+
+GRANT ALL ON SCHEMA public TO ripun;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ripun;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ripun;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ripun;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ripun;
+Verify:
+
+sql
+\dn+
+You should see public | ripun | ….
+
+Why this works
+ALTER SCHEMA public OWNER TO ripun; makes your role the owner of the schema.
+
+The GRANT statements give full rights on existing and future objects.
+
+No sudo is ever typed inside psql — that’s only for the shell.
 
 ---
 
