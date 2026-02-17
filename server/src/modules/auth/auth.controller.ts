@@ -21,6 +21,7 @@ import { CsrfGuard, CSRF_EXEMPT_KEY } from '../../platform/security/csrf/csrf.gu
 import { CurrentUser } from '../../platform/http/decorators/current-user.decorator';
 import { RequestWithUser, RequestUser } from '../../platform/http/types/request-context.type';
 import { SignupStartDto } from './dto/signup-start.dto';
+import { SignupVerifyDto } from './dto/signup-verify.dto';
 import { SignupPasswordDto } from './dto/signup-password.dto';
 import { LoginPasswordDto } from './dto/login-password.dto';
 import { PasskeyStartDto } from './dto/passkey-start.dto';
@@ -50,6 +51,15 @@ export class AuthController {
     @ApiResponse({ status: 201, description: 'User created, returns userId' })
     async signupStart(@Body() dto: SignupStartDto) {
         return this.authService.signupStart(dto);
+    }
+
+    @Post('signup/verify')
+    @SetMetadata(CSRF_EXEMPT_KEY, true)
+    @ApiOperation({ summary: 'Verify email with OTP' })
+    @ApiResponse({ status: 200, description: 'Email verified' })
+    async signupVerify(@Body() dto: SignupVerifyDto) {
+        await this.authService.signupVerify(dto.userId, dto.otp);
+        return { ok: true };
     }
 
     @Post('signup/password')

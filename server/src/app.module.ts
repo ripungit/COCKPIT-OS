@@ -9,6 +9,7 @@ import { PlatformAuthModule } from './platform/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { CockpitModule } from './modules/cockpit/cockpit.module';
 import { CocktailModule } from './modules/cocktail/cocktail.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { CocktailModule } from './modules/cocktail/cocktail.module';
         UsersModule,
         CockpitModule,
         CocktailModule,
+        MailModule,
     ],
     providers: [],
 })

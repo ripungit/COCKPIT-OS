@@ -9,6 +9,7 @@ import { ErrorCodes } from '../../common/constants/error-codes';
 import { normalizeEmail, normalizeUsername } from '../../common/utils/strings.util';
 import { addSeconds } from '../../common/utils/time.util';
 import { SignupStartDto } from './dto/signup-start.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -17,11 +18,21 @@ export class AuthService {
     constructor(
         private readonly drizzle: DrizzleService,
         private readonly configService: ConfigService,
+        private readonly mailService: MailService,
     ) {
         this.sessionTtlSeconds = parseInt(
             this.configService.get<string>('SESSION_TTL_SECONDS', '604800'),
             10,
         );
+    }
+
+    private generateOtp(): string {
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Mixed alpha-numeric, avoiding confusing chars
+        let otp = '';
+        for (let i = 0; i < 4; i++) {
+            otp += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return otp;
     }
 
     async signupStart(dto: SignupStartDto): Promise<{ userId: string }> {
@@ -36,55 +47,113 @@ export class AuthService {
             .where(or(eq(users.email, email), eq(users.username, username)))
             .limit(1);
 
+        let userId: string;
+        const otp = this.generateOtp();
+        const otpExpiresAt = addSeconds(new Date(), 600); // 10 minutes
+
         if (existing.length > 0) {
             const existingUser = existing[0];
-            if (existingUser.email === email) {
+
+            // If user is already verified (has password), conflict
+            if (existingUser.passwordHash) {
+                if (existingUser.email === email) {
+                    throw new ConflictException({
+                        code: ErrorCodes.EMAIL_EXISTS,
+                        message: 'Email already registered',
+                    });
+                }
                 throw new ConflictException({
-                    code: ErrorCodes.EMAIL_EXISTS,
-                    message: 'Email already registered',
+                    code: ErrorCodes.USERNAME_EXISTS,
+                    message: 'Username already taken',
                 });
             }
-            throw new ConflictException({
-                code: ErrorCodes.USERNAME_EXISTS,
-                message: 'Username already taken',
-            });
+
+            // pending user, update OTP
+            userId = existingUser.id;
+            await db.update(users)
+                .set({ otp, otpExpiresAt, firstName: dto.firstName, lastName: dto.lastName })
+                .where(eq(users.id, userId));
+        } else {
+            // New user
+            const [newUser] = await db
+                .insert(users)
+                .values({
+                    email,
+                    username,
+                    firstName: dto.firstName,
+                    lastName: dto.lastName,
+                    marketingOptIn: dto.marketingOptIn ?? false,
+                    role: 'user',
+                    otp,
+                    otpExpiresAt,
+                    isEmailVerified: false,
+                })
+                .returning({ id: users.id });
+            userId = newUser.id;
         }
 
-        // Create user without password
-        const [newUser] = await db
-            .insert(users)
-            .values({
-                email,
-                username,
-                firstName: dto.firstName,
-                lastName: dto.lastName,
-                marketingOptIn: dto.marketingOptIn ?? false,
-                role: 'user',
-            })
-            .returning({ id: users.id });
+        // Send Email
+        try {
+            await this.mailService.sendOtpEmail(email, otp);
+        } catch (e) {
+            console.error('Failed to send OTP email:', e);
+            // We don't fail the request, but user won't get OTP.
+            // Maybe we should fail? For now, log it.
+        }
 
-        return { userId: newUser.id };
+        return { userId };
+    }
+
+    async signupVerify(userId: string, otp: string): Promise<void> {
+        const db = this.drizzle.db;
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+        if (!user) {
+            throw new NotFoundException({ code: ErrorCodes.USER_NOT_FOUND, message: 'User not found' });
+        }
+
+        if (user.isEmailVerified && user.passwordHash) {
+            return; // Already verified
+        }
+
+        if (!user.otp || !user.otpExpiresAt) {
+            throw new UnauthorizedException({ message: 'No OTP request found' });
+        }
+
+        if (new Date() > user.otpExpiresAt) {
+            throw new UnauthorizedException({ message: 'OTP expired' });
+        }
+
+        if (user.otp !== otp.toUpperCase()) {
+            throw new UnauthorizedException({ message: 'Invalid OTP' });
+        }
+
+        await db.update(users)
+            .set({ isEmailVerified: true, otp: null, otpExpiresAt: null })
+            .where(eq(users.id, userId));
     }
 
     async signupPassword(userId: string, password: string): Promise<void> {
         const db = this.drizzle.db;
 
+        // Check if verified
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!user) {
+            throw new NotFoundException({ code: ErrorCodes.USER_NOT_FOUND, message: 'User not found' });
+        }
+
+        if (!user.isEmailVerified) {
+            throw new UnauthorizedException({ message: 'Email not verified' });
+        }
+
         // Hash password
         const passwordHash = await argon2.hash(password);
 
         // Update user
-        const result = await db
+        await db
             .update(users)
             .set({ passwordHash, updatedAt: new Date() })
-            .where(eq(users.id, userId))
-            .returning({ id: users.id });
-
-        if (result.length === 0) {
-            throw new NotFoundException({
-                code: ErrorCodes.USER_NOT_FOUND,
-                message: 'User not found',
-            });
-        }
+            .where(eq(users.id, userId));
     }
 
     async loginPassword(

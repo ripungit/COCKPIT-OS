@@ -6,8 +6,10 @@ import { WebauthnService } from './passkeys/webauthn.service';
 import { HttpModule } from '../../platform/http/http.module';
 import { SecurityModule } from '../../platform/security/security.module';
 
+import { MailModule } from '../mail/mail.module';
+
 @Module({
-    imports: [HttpModule, SecurityModule],
+    imports: [HttpModule, SecurityModule, MailModule],
     controllers: [AuthController],
     providers: [AuthService, PasskeysService, WebauthnService],
     exports: [AuthService],

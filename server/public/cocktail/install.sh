@@ -25,12 +25,42 @@ echo "Server: $SERVER_URL"
 echo "Device: $DEVICE_ID"
 
 # 0. Dependencies
-echo "Ensuring dependencies (curl, iproute2, npm)..."
+echo "Ensuring dependencies..."
+INSTALL_CMD=""
+UPDATE_CMD=""
+FETCH_PKG="fastfetch"
+
 if command -v apt-get >/dev/null; then
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq curl iproute2
+    INSTALL_CMD="sudo apt-get install -y -qq"
+    UPDATE_CMD="sudo apt-get update -qq"
+    NODE_INSTALL="curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
+elif command -v dnf >/dev/null; then
+    INSTALL_CMD="sudo dnf install -y -q"
+    UPDATE_CMD="sudo dnf makecache"
+    NODE_INSTALL="sudo dnf install -y nodejs"
 elif command -v yum >/dev/null; then
-    sudo yum install -y -q curl iproute2
+    INSTALL_CMD="sudo yum install -y -q"
+    UPDATE_CMD="sudo yum makecache"
+    NODE_INSTALL="sudo yum install -y nodejs"
+elif command -v pacman >/dev/null; then
+    INSTALL_CMD="sudo pacman -S --noconfirm --needed"
+    UPDATE_CMD="sudo pacman -Sy"
+    NODE_INSTALL="sudo pacman -S --noconfirm nodejs npm"
+elif command -v apk >/dev/null; then
+    INSTALL_CMD="sudo apk add"
+    UPDATE_CMD="sudo apk update"
+    NODE_INSTALL="sudo apk add nodejs npm"
+elif command -v zypper >/dev/null; then
+    INSTALL_CMD="sudo zypper install -y"
+    UPDATE_CMD="sudo zypper refresh"
+    NODE_INSTALL="sudo zypper install -y nodejs npm"
+fi
+
+if [ -n "$UPDATE_CMD" ]; then $UPDATE_CMD >/dev/null 2>&1 || true; fi
+if [ -n "$INSTALL_CMD" ]; then
+    $INSTALL_CMD curl iproute2 >/dev/null 2>&1 || true
+    # Try multiple fetch alternatives in order of preference
+    $INSTALL_CMD fastfetch >/dev/null 2>&1 || $INSTALL_CMD screenfetch >/dev/null 2>&1 || $INSTALL_CMD neofetch >/dev/null 2>&1 || true
 fi
 
 # 1. Detect OS and Arch
@@ -45,8 +75,7 @@ fi
 # Ensure Node.js is installed
 if ! command -v node >/dev/null; then
   echo "Installing Node.js..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-  sudo apt-get install -y nodejs
+  eval "$NODE_INSTALL"
 fi
 
 echo "Detected: $OS / $ARCH"
@@ -70,6 +99,11 @@ npm install --omit=dev --quiet
 
 # 4. Create Systemd Service
 SERVICE_FILE="/etc/systemd/system/cocktail.service"
+
+echo "Cleaning up existing service..."
+systemctl stop cocktail >/dev/null 2>&1 || true
+systemctl disable cocktail >/dev/null 2>&1 || true
+rm -f "$SERVICE_FILE"
 
 echo "Creating systemd service..."
 
@@ -99,3 +133,12 @@ systemctl restart cocktail
 
 echo "Cocktail Agent installed and started!"
 systemctl status cocktail --no-pager
+
+# Show system info
+if command -v fastfetch >/dev/null; then
+    fastfetch
+elif command -v screenfetch >/dev/null; then
+    screenfetch
+elif command -v neofetch >/dev/null; then
+    neofetch
+fi

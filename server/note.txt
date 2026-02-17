@@ -30,3 +30,7 @@ R2_BUCKET=
 
 # Cockpit Config
 COCKPIT_SECRET_KEY=
+
+
+# npm run db:clean to clean the database
+# No need to restart the server this time [npm run stress-test] ; npm run monitor-load

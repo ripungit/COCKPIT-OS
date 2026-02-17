@@ -1,7 +1,7 @@
 
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './src/app.module';
-import { DrizzleService } from './src/db/drizzle/drizzle.service';
+import { AppModule } from 'src/app.module';
+import { DrizzleService } from 'src/db/drizzle/drizzle.service';
 import { sql } from 'drizzle-orm';
 
 async function bootstrap() {

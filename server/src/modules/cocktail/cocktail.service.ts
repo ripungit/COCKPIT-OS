@@ -141,7 +141,7 @@ export class CocktailService {
         });
 
         // 4. Return
-        const serverUrl = process.env.API_PUBLIC_URL || 'https://cockpit.reglook.com';
+        const serverUrl = process.env.API_PUBLIC_URL || 'https://wholeheartedly-forgiving-sharron.ngrok-free.dev';
         return {
             deviceId: device.id,
             enrollmentToken: tokenRaw,
